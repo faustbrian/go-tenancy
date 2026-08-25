@@ -21,7 +21,7 @@ GOWORK=off go mod edit \
     -require=github.com/jackc/pgx/v5@v5.10.0 \
     -replace="github.com/faustbrian/go-audit=${repository_root}/pkg/audit" \
     -replace="github.com/faustbrian/go-audit/postgres=${repository_root}/pkg/audit/postgres" \
-    -replace="github.com/faustbrian/go-postgresql=${repository_root}/pkg/postgres" \
+    -replace="github.com/faustbrian/go-postgres=${repository_root}/pkg/postgres" \
     -replace="github.com/faustbrian/go-tenancy=${module_directory}" \
     -replace="github.com/faustbrian/go-workflow=${repository_root}/pkg/workflow"
 cp "${module_directory}/scripts/postgres/consumer_test.go.tmpl" consumer_test.go
