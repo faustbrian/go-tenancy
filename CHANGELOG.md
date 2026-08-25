@@ -5,6 +5,8 @@ versioning once released.
 
 ## Unreleased
 
+## 1.0.0 - 2026-08-25
+
 ### Changed
 
 - Resolve clean-consumer and integration compositions exclusively through
@@ -26,8 +28,6 @@ versioning once released.
 - Harden standalone documentation validation with deterministic spelling and
   link checks, package-specific documentation gates, and repository-local
   contributor guidance.
-
-## 1.0.0 - 2026-08-25
 
 ### Documentation
 
