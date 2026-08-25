@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
-	tenancypostgres "github.com/faustbrian/golib/pkg/tenancy/postgres"
+	"github.com/faustbrian/go-tenancy"
+	tenancypostgres "github.com/faustbrian/go-tenancy/postgres"
 )
 
 func TestManagerEnforcesTenantScopeAcrossPoolReuseAndRollback(t *testing.T) {

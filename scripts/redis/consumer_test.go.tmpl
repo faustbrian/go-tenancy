@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faustbrian/golib/pkg/queue"
-	"github.com/faustbrian/golib/pkg/queue/job"
-	"github.com/faustbrian/golib/pkg/queue/management"
-	redisstream "github.com/faustbrian/golib/pkg/queue/redisstream"
-	"github.com/faustbrian/golib/pkg/tenancy"
+	"github.com/faustbrian/go-queue"
+	"github.com/faustbrian/go-queue/job"
+	"github.com/faustbrian/go-queue/management"
+	redisstream "github.com/faustbrian/go-queue/redisstream"
+	"github.com/faustbrian/go-tenancy"
 )
 
 func TestRedisRetryAndDeadLetterRetainOneTenantScope(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
+	"github.com/faustbrian/go-tenancy"
 )
 
 func Example() {

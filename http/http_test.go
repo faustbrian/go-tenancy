@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
-	tenanthttp "github.com/faustbrian/golib/pkg/tenancy/http"
+	"github.com/faustbrian/go-tenancy"
+	tenanthttp "github.com/faustbrian/go-tenancy/http"
 )
 
 func TestMiddlewareAcceptsOnlyExplicitlyTrustedTenantHeader(t *testing.T) {

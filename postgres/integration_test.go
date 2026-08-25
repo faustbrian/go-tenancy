@@ -19,8 +19,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
-	tenancypostgres "github.com/faustbrian/golib/pkg/tenancy/postgres"
+	"github.com/faustbrian/go-tenancy"
+	tenancypostgres "github.com/faustbrian/go-tenancy/postgres"
 )
 
 func TestPostgreSQLRLSAndPoolReuseIsolation(t *testing.T) {

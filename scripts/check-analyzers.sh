@@ -26,7 +26,7 @@ set +e
     cd "${repository_root}"
     GOWORK="${repository_root}/go.work" "${analyzer}" check \
         -config "${policy}" -root "${repository_root}" -format json \
-        ./pkg/tenancy/testdata/analyzer/consumer
+        ./testdata/analyzer/consumer
 ) >"${consumer_report}"
 consumer_status=$?
 set -e
@@ -54,7 +54,7 @@ assert_diagnostic_count 'observability/high-cardinality-label' 1
     cd "${repository_root}"
     GOWORK="${repository_root}/go.work" "${analyzer}" check \
         -config "${policy}" -root "${repository_root}" -format json \
-        ./pkg/tenancy/testdata/analyzer/adapter
+        ./testdata/analyzer/adapter
 ) >"${adapter_report}"
 if ! rg -q '"diagnostics":\[\]' "${adapter_report}"; then
     printf 'reviewed tenancy adapter emitted analyzer diagnostics\n' >&2

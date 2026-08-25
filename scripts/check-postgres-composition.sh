@@ -14,16 +14,16 @@ trap cleanup EXIT HUP INT TERM
 cd "${consumer}"
 GOWORK=off go mod init example.com/tenancy-postgres-consumer
 GOWORK=off go mod edit \
-    -require=github.com/faustbrian/golib/pkg/audit@v0.0.0 \
-    -require=github.com/faustbrian/golib/pkg/audit/postgres@v0.0.0 \
-    -require=github.com/faustbrian/golib/pkg/tenancy@v0.0.0 \
-    -require=github.com/faustbrian/golib/pkg/workflow@v0.0.0 \
+    -require=github.com/faustbrian/go-audit@v0.0.0 \
+    -require=github.com/faustbrian/go-audit/postgres@v0.0.0 \
+    -require=github.com/faustbrian/go-tenancy@v0.0.0 \
+    -require=github.com/faustbrian/go-workflow@v0.0.0 \
     -require=github.com/jackc/pgx/v5@v5.10.0 \
-    -replace="github.com/faustbrian/golib/pkg/audit=${repository_root}/pkg/audit" \
-    -replace="github.com/faustbrian/golib/pkg/audit/postgres=${repository_root}/pkg/audit/postgres" \
-    -replace="github.com/faustbrian/golib/pkg/postgres=${repository_root}/pkg/postgres" \
-    -replace="github.com/faustbrian/golib/pkg/tenancy=${module_directory}" \
-    -replace="github.com/faustbrian/golib/pkg/workflow=${repository_root}/pkg/workflow"
+    -replace="github.com/faustbrian/go-audit=${repository_root}/pkg/audit" \
+    -replace="github.com/faustbrian/go-audit/postgres=${repository_root}/pkg/audit/postgres" \
+    -replace="github.com/faustbrian/go-postgresql=${repository_root}/pkg/postgres" \
+    -replace="github.com/faustbrian/go-tenancy=${module_directory}" \
+    -replace="github.com/faustbrian/go-workflow=${repository_root}/pkg/workflow"
 cp "${module_directory}/scripts/postgres/consumer_test.go.tmpl" consumer_test.go
 GOWORK=off go mod tidy
 GOWORK=off go test -race -count=1 ./...

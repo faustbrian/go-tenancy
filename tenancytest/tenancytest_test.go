@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
-	"github.com/faustbrian/golib/pkg/tenancy/tenancytest"
+	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/tenancytest"
 )
 
 func TestHelpersConstructAndAssertExplicitScopes(t *testing.T) {

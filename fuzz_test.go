@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
+	"github.com/faustbrian/go-tenancy"
 )
 
 func FuzzTenantIDRoundTrip(f *testing.F) {

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Before v1, pin an exact tenancy module version and review every upgrade. After
+Pin an exact tenancy module version and review every upgrade.
 v1, only versions explicitly listed in repository release notes are supported.
 
 ## Reporting

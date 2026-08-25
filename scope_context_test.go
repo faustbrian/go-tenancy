@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
+	"github.com/faustbrian/go-tenancy"
 )
 
 func TestTenantScopeOwnsMetadataAndRequiresValidIdentity(t *testing.T) {

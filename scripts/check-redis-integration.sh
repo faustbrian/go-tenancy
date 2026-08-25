@@ -14,10 +14,10 @@ trap cleanup EXIT HUP INT TERM
 cd "${consumer}"
 GOWORK=off go mod init example.com/tenancy-redis
 GOWORK=off go mod edit \
-    -require=github.com/faustbrian/golib/pkg/queue@v0.0.0 \
-    -require=github.com/faustbrian/golib/pkg/tenancy@v0.0.0 \
-    -replace="github.com/faustbrian/golib/pkg/queue=${repository_root}/pkg/queue" \
-    -replace="github.com/faustbrian/golib/pkg/tenancy=${module_directory}"
+    -require=github.com/faustbrian/go-queue@v0.0.0 \
+    -require=github.com/faustbrian/go-tenancy@v0.0.0 \
+    -replace="github.com/faustbrian/go-queue=${repository_root}/pkg/queue" \
+    -replace="github.com/faustbrian/go-tenancy=${module_directory}"
 cp "${module_directory}/scripts/redis/consumer_test.go.tmpl" consumer_test.go
 GOWORK=off go mod tidy
 GOWORK=off go test -race -count=1 ./...

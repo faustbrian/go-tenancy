@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "repository": "github.com/faustbrian/go-tenancy",
+  "go_version": "1.26.6",
+  "modules": [
+    {
+      "directory": ".",
+      "module_path": "github.com/faustbrian/go-tenancy",
+      "go_version": "1.26.6",
+      "packages": [
+        {
+          "module_directory": ".",
+          "directory": ".",
+          "name": "tenancy",
+          "import_path": "github.com/faustbrian/go-tenancy",
+          "kind": "public",
+          "production": true,
+          "executable": true,
+          "coverage_required": true,
+          "build_required": true,
+          "build_tags": []
+        },
+        {
+          "module_directory": ".",
+          "directory": "http",
+          "name": "tenancyhttp",
+          "import_path": "github.com/faustbrian/go-tenancy/http",
+          "kind": "public",
+          "production": true,
+          "executable": true,
+          "coverage_required": true,
+          "build_required": true,
+          "build_tags": []
+        },
+        {
+          "module_directory": ".",
+          "directory": "jsonrpc",
+          "name": "tenancyjsonrpc",
+          "import_path": "github.com/faustbrian/go-tenancy/jsonrpc",
+          "kind": "public",
+          "production": true,
+          "executable": true,
+          "coverage_required": true,
+          "build_required": true,
+          "build_tags": []
+        },
+        {
+          "module_directory": ".",
+          "directory": "postgres",
+          "name": "tenancypostgres",
+          "import_path": "github.com/faustbrian/go-tenancy/postgres",
+          "kind": "public",
+          "production": true,
+          "executable": true,
+          "coverage_required": true,
+          "build_required": true,
+          "build_tags": []
+        },
+        {
+          "module_directory": ".",
+          "directory": "tenancytest",
+          "name": "tenancytest",
+          "import_path": "github.com/faustbrian/go-tenancy/tenancytest",
+          "kind": "test support",
+          "production": false,
+          "executable": true,
+          "coverage_required": false,
+          "build_required": true,
+          "build_tags": []
+        }
+      ],
+      "purpose": "`tenancy` is a small explicit foundation for tenant isolation. It transports validated tenant identity and makes tenant-bound, system-wide, and deliberately unscoped work distinct in Go APIs. It does not authenticate callers, decide membership, or authorize access.",
+      "lifecycle": "stable",
+      "kind": "public library",
+      "releasable": true,
+      "family": "foundations",
+      "family_label": "Foundations",
+      "family_description": "Common immutable values, deterministic seams, configuration, identity propagation, and input validation.",
+      "family_order": 1,
+      "version": "v1.0.0",
+      "tag_prefix": "v",
+      "owned_dependencies": [],
+      "reverse_owned_dependencies": [
+        "github.com/faustbrian/go-cloudevents/adapters/golib",
+        "github.com/faustbrian/go-service/integration/reference-http"
+      ],
+      "external_runtime_dependencies": [
+        "github.com/jackc/pgx/v5",
+        "go.uber.org/goleak"
+      ],
+      "required_services": [
+        "postgresql"
+      ],
+      "build_tags": [],
+      "test_tags": [
+        "integration"
+      ],
+      "interoperability_tools": [],
+      "specifications": [],
+      "conformance_corpora": [],
+      "provenance": [],
+      "goal_files": [
+        ".ai/GOAL.md",
+        ".ai/GOAL_HARDEN.md"
+      ],
+      "goal_status": "implementation-evidence-inventoried",
+      "goal_evidence": [
+        {
+          "file": ".ai/GOAL.md",
+          "requirements_sha256": "e3310631dbf320a53251481445d857176edd1e7b64a9157fcab229631733dbd5",
+          "implementation_evidence": [
+            "CHANGELOG.md",
+            "README.md",
+            "docs/hardening.md",
+            "docs/security.md"
+          ],
+          "verification_gates": [
+            "format-check",
+            "tidy-check",
+            "safety",
+            "vet",
+            "test",
+            "race",
+            "coverage",
+            "lint",
+            "staticcheck",
+            "vulnerability",
+            "secrets",
+            "licenses",
+            "sbom",
+            "fuzz",
+            "mutation",
+            "nilaway",
+            "docs",
+            "api",
+            "conformance",
+            "interoperability",
+            "benchmark"
+          ],
+          "implementation_status": "implemented-requires-fresh-verification"
+        },
+        {
+          "file": ".ai/GOAL_HARDEN.md",
+          "requirements_sha256": "ad47e6ed1e40e6e1e0475d63c637a9a62d459fded8ac81bd946005fb921d4353",
+          "implementation_evidence": [
+            "CHANGELOG.md",
+            "README.md",
+            "docs/hardening.md",
+            "docs/security.md"
+          ],
+          "verification_gates": [
+            "format-check",
+            "tidy-check",
+            "safety",
+            "vet",
+            "test",
+            "race",
+            "coverage",
+            "lint",
+            "staticcheck",
+            "vulnerability",
+            "secrets",
+            "licenses",
+            "sbom",
+            "fuzz",
+            "mutation",
+            "nilaway",
+            "docs",
+            "api",
+            "conformance",
+            "interoperability",
+            "benchmark"
+          ],
+          "implementation_status": "implemented-requires-fresh-verification"
+        }
+      ],
+      "gates": {
+        "api_compatibility": true,
+        "benchmarks": true,
+        "conformance": false,
+        "coverage": true,
+        "documentation": true,
+        "fuzz": true,
+        "lint": true,
+        "mutation": true,
+        "race": true,
+        "security": true,
+        "tests": true
+      }
+    }
+  ]
+}

@@ -4,13 +4,13 @@ package consumer
 import (
 	"context"
 
-	auditmemory "github.com/faustbrian/golib/pkg/audit/memory"
-	cachememory "github.com/faustbrian/golib/pkg/cache/backend/memory"
-	"github.com/faustbrian/golib/pkg/queue"
-	telemetryotlp "github.com/faustbrian/golib/pkg/telemetry/otlp"
-	"github.com/faustbrian/golib/pkg/tenancy"
-	"github.com/faustbrian/golib/pkg/tenancy/testdata/analyzer/metrics"
-	workflowpostgres "github.com/faustbrian/golib/pkg/workflow/postgres"
+	auditmemory "github.com/faustbrian/go-audit/memory"
+	cachememory "github.com/faustbrian/go-cache/backend/memory"
+	"github.com/faustbrian/go-queue"
+	telemetryotlp "github.com/faustbrian/go-telemetry/otlp"
+	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/testdata/analyzer/metrics"
+	workflowpostgres "github.com/faustbrian/go-workflow/postgres"
 )
 
 // Bypass contains one direct call for every policy-owned negative fixture.

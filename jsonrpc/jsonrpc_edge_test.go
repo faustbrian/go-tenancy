@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
-	tenantjsonrpc "github.com/faustbrian/golib/pkg/tenancy/jsonrpc"
+	"github.com/faustbrian/go-tenancy"
+	tenantjsonrpc "github.com/faustbrian/go-tenancy/jsonrpc"
 )
 
 func TestJSONRPCRejectsEveryStructuralAmbiguity(t *testing.T) {

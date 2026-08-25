@@ -1,0 +1,125 @@
+{
+  "schema_version": 3,
+  "reason": "Exact mutation checkpoints retained across history rewrites only when the approved old and replacement package input fingerprints, tool version, and report digest match.",
+  "verifier_migration_review": {
+    "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+    "reason": "Each listed checkpoint was executed with the complete current Gremlins semantic patch set introduced by ac300cf3; the four omitted checkpoints require fresh campaigns.",
+    "reviewed_at": "2026-08-20"
+  },
+  "verifier_migrations": [
+    {
+      "execution_revision": "c09c5268b1facb88317f933913b2e7cf4377948b",
+      "gate_input_digest": "f5e140ccdde9ff67f450af14227fb6f45eecda897a97de5423762e6177b284b4",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "gremlins_version": "v0.6.0",
+      "module": ".",
+      "package": ".",
+      "report_sha256": "b7bfacbe0d2d2431b980790a96232e700e5f7940f6f460cba7cb7da955ef2919"
+    },
+    {
+      "execution_revision": "65acb13e8166e27c8a9723416214556f07d5e674",
+      "gate_input_digest": "61bf40aeaafb8c45b9079ea298e5c3a3ea6f3c405909c21fdf1137de17a4e6f8",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "gremlins_version": "v0.6.0",
+      "module": ".",
+      "package": "http",
+      "report_sha256": "343f461fc71877ec806f1b680c872f00fec6b4e3e3c83e4153536ba5887e1009"
+    },
+    {
+      "execution_revision": "c09c5268b1facb88317f933913b2e7cf4377948b",
+      "gate_input_digest": "2d73bc241a94347e754aa470413aedeed417e3307f770064944699fe57f0f80f",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "gremlins_version": "v0.6.0",
+      "module": ".",
+      "package": "jsonrpc",
+      "report_sha256": "6e8e8cc6bbdd85483af0c16fe63ec5887ad12214d1049f6828cc6b87df695af1"
+    },
+    {
+      "execution_revision": "c09c5268b1facb88317f933913b2e7cf4377948b",
+      "gate_input_digest": "ef5d5fc116dfcc446d6b6bb655841720838a586cfb18121b37b896e58a992ba2",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "gremlins_version": "v0.6.0",
+      "module": ".",
+      "package": "postgres",
+      "report_sha256": "0beec699408c0132ca99cb9cb3855e5f398df665217db8e96f5e50e224a79745"
+    },
+    {
+      "module": ".",
+      "package": ".",
+      "execution_revision": "556e3d5d9a6cd7981f2aaabdbc0f7aaef9ecc7ae",
+      "gate_input_digest": "e7d5a2e38d20cda27f86396f4d9fe231b014e123f718b1872ad63a01f89e88b3",
+      "gremlins_version": "v0.6.0",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "report_sha256": "2cd21199a6ea3da858ebb7f3b6f5d086084fdc4a0daa0717938e0cafb09714d5"
+    },
+    {
+      "module": ".",
+      "package": "http",
+      "execution_revision": "556e3d5d9a6cd7981f2aaabdbc0f7aaef9ecc7ae",
+      "gate_input_digest": "4abac6f41f387559024be03c5ddba54299639b9fb9e69fc24e908081eff407a0",
+      "gremlins_version": "v0.6.0",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "report_sha256": "40f5712c67374c02e9600e59e4af0ee96546c90a632681e59f3d7d98b7b6ff97"
+    },
+    {
+      "module": ".",
+      "package": "jsonrpc",
+      "execution_revision": "556e3d5d9a6cd7981f2aaabdbc0f7aaef9ecc7ae",
+      "gate_input_digest": "4c96ad77d2c1c1f9ef023cb51d7e34d0c3344835be8f6a2c744e6bea5fe339e6",
+      "gremlins_version": "v0.6.0",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "report_sha256": "4c57adf4e9fab9d0eb331d29a91d87cc9c7550d6edda891fc927fd11dcfb82ba"
+    },
+    {
+      "module": ".",
+      "package": "postgres",
+      "execution_revision": "556e3d5d9a6cd7981f2aaabdbc0f7aaef9ecc7ae",
+      "gate_input_digest": "a16b9933f067ab274740e7609112ae77a032046569afa58932683059450a03f8",
+      "gremlins_version": "v0.6.0",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "report_sha256": "547a086bf2793fa92bac75f43e7c0ef8b125fa28ab209bc2dafe7eba63fad67a"
+    }
+  ],
+  "entries": [
+    {
+      "module": ".",
+      "package": ".",
+      "execution_revision": "556e3d5d9a6cd7981f2aaabdbc0f7aaef9ecc7ae",
+      "gate_input_digest": "e7d5a2e38d20cda27f86396f4d9fe231b014e123f718b1872ad63a01f89e88b3",
+      "replacement_gate_input_digest": "311ade2436056dfe9f08409bd40fa963daf776a001bc162466209cb80f9dafdf",
+      "gremlins_version": "v0.6.0",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "report_sha256": "2cd21199a6ea3da858ebb7f3b6f5d086084fdc4a0daa0717938e0cafb09714d5"
+    },
+    {
+      "module": ".",
+      "package": "http",
+      "execution_revision": "556e3d5d9a6cd7981f2aaabdbc0f7aaef9ecc7ae",
+      "gate_input_digest": "4abac6f41f387559024be03c5ddba54299639b9fb9e69fc24e908081eff407a0",
+      "replacement_gate_input_digest": "e6a1f95cdf77849554aae82d9b66a7422954cc1047ffb449bd0004358ae3d018",
+      "gremlins_version": "v0.6.0",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "report_sha256": "40f5712c67374c02e9600e59e4af0ee96546c90a632681e59f3d7d98b7b6ff97"
+    },
+    {
+      "module": ".",
+      "package": "jsonrpc",
+      "execution_revision": "556e3d5d9a6cd7981f2aaabdbc0f7aaef9ecc7ae",
+      "gate_input_digest": "4c96ad77d2c1c1f9ef023cb51d7e34d0c3344835be8f6a2c744e6bea5fe339e6",
+      "replacement_gate_input_digest": "960d549b7be25e6406597711f494d995509d181f140bb7de3bb98eae4dedddb2",
+      "gremlins_version": "v0.6.0",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "report_sha256": "4c57adf4e9fab9d0eb331d29a91d87cc9c7550d6edda891fc927fd11dcfb82ba"
+    },
+    {
+      "module": ".",
+      "package": "postgres",
+      "execution_revision": "556e3d5d9a6cd7981f2aaabdbc0f7aaef9ecc7ae",
+      "gate_input_digest": "a16b9933f067ab274740e7609112ae77a032046569afa58932683059450a03f8",
+      "replacement_gate_input_digest": "b5231bd7b7c8164a5dc933060c7d725d4280266ce94f0c7e12e7010c95e90d74",
+      "gremlins_version": "v0.6.0",
+      "gremlins_verifier_sha256": "9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+      "report_sha256": "547a086bf2793fa92bac75f43e7c0ef8b125fa28ab209bc2dafe7eba63fad67a"
+    }
+  ]
+}

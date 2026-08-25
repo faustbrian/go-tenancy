@@ -5,12 +5,15 @@ versioning once released.
 
 ## Unreleased
 
+## 1.0.0 - 2026-08-25
+
 ### Documentation
 
 - Link the package README to the repository-wide Golib documentation portal.
 
 ### Changed
 
+- Publish the module from its standalone `github.com/faustbrian/go-tenancy` identity while preserving its documented API and behavior.
 - Prove that HTTP tenant extraction ignores unrelated headers even when their
   values resemble valid tenant identifiers.
 - Emit provider-safe `tn2_` lowercase hexadecimal namespaces. Existing `tn1_`

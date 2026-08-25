@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faustbrian/golib/pkg/search"
-	opensearch "github.com/faustbrian/golib/pkg/search/adapters/opensearch"
-	"github.com/faustbrian/golib/pkg/tenancy"
+	"github.com/faustbrian/go-search"
+	opensearch "github.com/faustbrian/go-search/adapters/opensearch"
+	"github.com/faustbrian/go-tenancy"
 )
 
 type tenantSearch struct{ client *opensearch.Client }

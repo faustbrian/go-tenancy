@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
+	"github.com/faustbrian/go-tenancy"
 )
 
 const (

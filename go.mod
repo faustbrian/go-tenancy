@@ -1,4 +1,4 @@
-module github.com/faustbrian/golib/pkg/tenancy
+module github.com/faustbrian/go-tenancy
 
 go 1.26.6
 

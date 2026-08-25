@@ -3,11 +3,11 @@
 package adapter
 
 import (
-	auditmemory "github.com/faustbrian/golib/pkg/audit/memory"
-	cachememory "github.com/faustbrian/golib/pkg/cache/backend/memory"
-	"github.com/faustbrian/golib/pkg/queue"
-	telemetryotlp "github.com/faustbrian/golib/pkg/telemetry/otlp"
-	workflowpostgres "github.com/faustbrian/golib/pkg/workflow/postgres"
+	auditmemory "github.com/faustbrian/go-audit/memory"
+	cachememory "github.com/faustbrian/go-cache/backend/memory"
+	"github.com/faustbrian/go-queue"
+	telemetryotlp "github.com/faustbrian/go-telemetry/otlp"
+	workflowpostgres "github.com/faustbrian/go-workflow/postgres"
 )
 
 // Construct proves that the exact reviewed adapter exception remains narrow.

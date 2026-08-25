@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
-	tenancyhttp "github.com/faustbrian/golib/pkg/tenancy/http"
-	tenancyjsonrpc "github.com/faustbrian/golib/pkg/tenancy/jsonrpc"
-	tenancypostgres "github.com/faustbrian/golib/pkg/tenancy/postgres"
+	"github.com/faustbrian/go-tenancy"
+	tenancyhttp "github.com/faustbrian/go-tenancy/http"
+	tenancyjsonrpc "github.com/faustbrian/go-tenancy/jsonrpc"
+	tenancypostgres "github.com/faustbrian/go-tenancy/postgres"
 )
 
 func TestAuthenticatedHopAndPersistenceCompositionFailsClosed(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/faustbrian/golib/pkg/tenancy"
-	tenancyhttp "github.com/faustbrian/golib/pkg/tenancy/http"
+	"github.com/faustbrian/go-tenancy"
+	tenancyhttp "github.com/faustbrian/go-tenancy/http"
 )
 
 func FuzzHTTPHeaderExtraction(f *testing.F) {
