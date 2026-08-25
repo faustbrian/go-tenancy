@@ -2,7 +2,6 @@
 set -euo pipefail
 
 module_directory="$(cd "$(dirname "$0")/.." && pwd)"
-repository_root="$(git -C "${module_directory}" rev-parse --show-toplevel)"
 consumer="$(mktemp -d "${TMPDIR:-/tmp}/tenancy-consumer.XXXXXX")"
 cleanup() {
     chmod -R u+w "${consumer}" 2>/dev/null || true
@@ -13,31 +12,15 @@ trap cleanup EXIT HUP INT TERM
 cd "${consumer}"
 GOWORK=off go mod init example.com/tenancy-consumer
 GOWORK=off go mod edit \
-    -require=github.com/faustbrian/go-audit@v0.0.0 \
-    -require=github.com/faustbrian/go-cache@v0.0.0 \
-    -require=github.com/faustbrian/go-cloudevents/adapters/golib@v0.0.0 \
-    -require=github.com/faustbrian/go-queue@v0.0.0 \
-    -require=github.com/faustbrian/go-search@v0.0.0 \
-    -require=github.com/faustbrian/go-telemetry@v0.0.0 \
-    -require=github.com/faustbrian/go-tenancy@v0.0.0 \
-    -require=github.com/faustbrian/go-workflow@v0.0.0 \
-    -require=go.opentelemetry.io/otel/sdk/metric@v1.44.0 \
-    -replace="github.com/faustbrian/go-audit=${repository_root}/pkg/audit" \
-    -replace="github.com/faustbrian/go-cache=${repository_root}/pkg/cache" \
-    -replace="github.com/faustbrian/go-cloudevents=${repository_root}/pkg/cloudevents" \
-    -replace="github.com/faustbrian/go-cloudevents/adapters/golib=${repository_root}/pkg/cloudevents/adapters/golib" \
-    -replace="github.com/faustbrian/go-correlation=${repository_root}/pkg/correlation" \
-    -replace="github.com/faustbrian/go-event-sourcing=${repository_root}/pkg/event-sourcing" \
-    -replace="github.com/faustbrian/go-identifier=${repository_root}/pkg/identifier" \
-    -replace="github.com/faustbrian/go-json-schema=${repository_root}/pkg/json-schema" \
-    -replace="github.com/faustbrian/go-kafka=${repository_root}/pkg/kafka" \
-    -replace="github.com/faustbrian/go-transactional-outbox=${repository_root}/pkg/outbox" \
-    -replace="github.com/faustbrian/go-queue=${repository_root}/pkg/queue" \
-    -replace="github.com/faustbrian/go-schema-registry=${repository_root}/pkg/schema-registry" \
-    -replace="github.com/faustbrian/go-search=${repository_root}/pkg/search" \
-    -replace="github.com/faustbrian/go-telemetry=${repository_root}/pkg/telemetry" \
-    -replace="github.com/faustbrian/go-tenancy=${module_directory}" \
-    -replace="github.com/faustbrian/go-workflow=${repository_root}/pkg/workflow"
+    -require=github.com/faustbrian/go-audit@v1.0.0 \
+    -require=github.com/faustbrian/go-cache@v1.0.0 \
+    -require=github.com/faustbrian/go-cloudevents/adapters/golib@v1.0.0 \
+    -require=github.com/faustbrian/go-queue@v1.0.0 \
+    -require=github.com/faustbrian/go-search@v1.0.0 \
+    -require=github.com/faustbrian/go-telemetry@v1.0.0 \
+    -require=github.com/faustbrian/go-tenancy@v1.0.0 \
+    -require=github.com/faustbrian/go-workflow@v1.0.0 \
+    -require=go.opentelemetry.io/otel/sdk/metric@v1.44.0
 mkdir consumer
 printf '%s\n' 'package consumer' \
     'import (' \

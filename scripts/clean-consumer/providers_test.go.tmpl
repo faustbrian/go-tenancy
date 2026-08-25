@@ -132,7 +132,7 @@ func TestRealCacheAndSearchProvidersDoNotCrossTenantStorage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	result, err := provider.Search(context.Background(), search.Request{Tenant: "tenant-a", Index: "orders", Query: search.MatchAllQuery{}, Sort: []search.Sort{{Field: "_id", Direction: search.Ascending}}, Page: search.OffsetPage{Size: 10}})
+	result, err := provider.Search(context.Background(), search.Request{Tenant: "tenant-a", Index: "orders", Query: search.MatchAllQuery{}, Sort: []search.Sort{{Field: search.DocumentIDSortField, Direction: search.Ascending}}, Page: search.OffsetPage{Size: 10}})
 	if err != nil || len(result.Hits()) != 1 || string(result.Hits()[0].Source) != `{"owner":"tenant-a"}` {
 		t.Fatalf("tenant-a search = %#v, %v", result.Hits(), err)
 	}

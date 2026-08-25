@@ -7,6 +7,11 @@ versioning once released.
 
 ### Changed
 
+- Resolve clean-consumer and integration compositions exclusively through
+  versioned standalone modules instead of former monorepo replacements.
+- Resolve the policy analyzer as a versioned standalone tool and keep its
+  fixtures runnable without a monorepo workspace or ripgrep.
+
 - Exclude intentional nested modules from root local-proxy archives so local,
   bootstrap, CI, and public module checksums describe the same source
   boundary.
