@@ -5,6 +5,11 @@ versioning once released.
 
 ## Unreleased
 
+### Documentation
+
+- Replace archived monorepo links and completed execution artifacts with a
+  standalone, human-oriented documentation structure.
+
 ## 1.0.0 - 2026-08-25
 
 ### Changed

@@ -99,81 +99,9 @@
       "specifications": [],
       "conformance_corpora": [],
       "provenance": [],
-      "goal_files": [
-        ".ai/GOAL.md",
-        ".ai/GOAL_HARDEN.md"
-      ],
-      "goal_status": "implementation-evidence-inventoried",
-      "goal_evidence": [
-        {
-          "file": ".ai/GOAL.md",
-          "requirements_sha256": "e3310631dbf320a53251481445d857176edd1e7b64a9157fcab229631733dbd5",
-          "implementation_evidence": [
-            "CHANGELOG.md",
-            "README.md",
-            "docs/hardening.md",
-            "docs/security.md"
-          ],
-          "verification_gates": [
-            "format-check",
-            "tidy-check",
-            "safety",
-            "vet",
-            "test",
-            "race",
-            "coverage",
-            "lint",
-            "staticcheck",
-            "vulnerability",
-            "secrets",
-            "licenses",
-            "sbom",
-            "fuzz",
-            "mutation",
-            "nilaway",
-            "docs",
-            "api",
-            "conformance",
-            "interoperability",
-            "benchmark"
-          ],
-          "implementation_status": "implemented-requires-fresh-verification"
-        },
-        {
-          "file": ".ai/GOAL_HARDEN.md",
-          "requirements_sha256": "ad47e6ed1e40e6e1e0475d63c637a9a62d459fded8ac81bd946005fb921d4353",
-          "implementation_evidence": [
-            "CHANGELOG.md",
-            "README.md",
-            "docs/hardening.md",
-            "docs/security.md"
-          ],
-          "verification_gates": [
-            "format-check",
-            "tidy-check",
-            "safety",
-            "vet",
-            "test",
-            "race",
-            "coverage",
-            "lint",
-            "staticcheck",
-            "vulnerability",
-            "secrets",
-            "licenses",
-            "sbom",
-            "fuzz",
-            "mutation",
-            "nilaway",
-            "docs",
-            "api",
-            "conformance",
-            "interoperability",
-            "benchmark"
-          ],
-          "implementation_status": "implemented-requires-fresh-verification"
-        }
-      ],
+      "goal_files": [],
+      "goal_status": "not-applicable",
+      "goal_evidence": [],
       "gates": {
         "api_compatibility": true,
         "benchmarks": true,
