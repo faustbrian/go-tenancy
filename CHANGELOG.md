@@ -5,6 +5,11 @@ versioning once released.
 
 ## Unreleased
 
+### Changed
+
+- Replace copied verification tooling with the pinned `golib` v1.0.6 release
+  while retaining repository-owned API and mutation evidence.
+
 ## 1.0.0 - 2026-08-25
 
 ### Changed
