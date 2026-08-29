@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "repository": "github.com/faustbrian/go-tenancy",
+  "module": ".",
+  "package": "jsonrpc",
+  "gate": "mutation",
+  "input_digest": "sha256:fd9b1f6d873ebed15c32f42168373094cb3b8c8c9ed3597f537d7b5560725b30",
+  "verifier_digest": "sha256:9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+  "result": "passed",
+  "report_digest": "sha256:2b6d0eff0a6f8fc0ef3230d16fbbab07ed4537d44c5ffa68d859be3510073c5b",
+  "environment": {
+    "CGO_ENABLED": "1",
+    "GOARCH": "arm64",
+    "GOOS": "darwin",
+    "GOVERSION": "go1.27.0",
+    "gremlins_binary_sha256": "sha256:6a2beddc477eb410f8a670b6c9049558563d3c4327498fe31604d31c773a959e"
+  },
+  "completed_at": "2026-08-29T09:17:09.023449Z"
+}

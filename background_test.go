@@ -101,6 +101,31 @@ func TestGroupSubmissionAndShutdownAreCancellable(t *testing.T) {
 	}
 }
 
+func TestGroupHealthySubmissionStartsPromptly(t *testing.T) {
+	t.Parallel()
+
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan struct{})
+	if err := group.Submit(context.Background(), scope, func(context.Context) error {
+		close(started)
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	select {
+	case <-started:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("healthy submission did not start promptly")
+	}
+	if err := shutdownWithin(t, group); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+}
+
 func TestGroupRejectsAlreadyCancelledTaskLifetimeBeforeStartingWork(t *testing.T) {
 	t.Parallel()
 
@@ -157,7 +182,7 @@ func TestGroupRejectsAlreadyCancelledTaskLifetimeBeforeStartingWork(t *testing.T
 	t.Run("submit cancelled immediately after capacity acquisition", func(t *testing.T) {
 		group, _ := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
 		base, cancelSubmit := context.WithCancel(context.Background())
-		submitContext := &secondErrorHookContext{Context: base, hook: cancelSubmit}
+		submitContext := &firstErrorHookContext{Context: base, hook: cancelSubmit}
 		err := group.Submit(submitContext, scope, func(context.Context) error {
 			t.Error("cancelled submission started work")
 			return nil
@@ -173,7 +198,7 @@ func TestGroupRejectsAlreadyCancelledTaskLifetimeBeforeStartingWork(t *testing.T
 	t.Run("group cancelled immediately after capacity acquisition", func(t *testing.T) {
 		parent, cancelParent := context.WithCancel(context.Background())
 		group, _ := tenancy.NewGroup(parent, tenancy.GroupOptions{MaxConcurrent: 1})
-		submitContext := &secondErrorHookContext{
+		submitContext := &firstErrorHookContext{
 			Context: context.Background(),
 			hook:    cancelParent,
 		}
@@ -411,15 +436,15 @@ func TestGroupValidatesConstructionAndSubmission(t *testing.T) {
 	}
 }
 
-type secondErrorHookContext struct {
+type firstErrorHookContext struct {
 	context.Context
 	calls int
 	hook  func()
 }
 
-func (ctx *secondErrorHookContext) Err() error {
+func (ctx *firstErrorHookContext) Err() error {
 	ctx.calls++
-	if ctx.calls == 2 {
+	if ctx.calls == 1 {
 		ctx.hook()
 	}
 	return ctx.Context.Err()

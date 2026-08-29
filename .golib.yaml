@@ -1,0 +1,51 @@
+schema_version: 1
+tool_version: v1.0.6
+tool_checksums_sha256: d43e6a07573371e95d5fcf47c94e78f9983e903ef4eaab8e39f9bfc5dc224525
+manifest:
+  modules: modules.json
+  packages: packages.json
+evidence:
+  root: .verification
+mutation:
+  root: .verification/mutation
+  imports:
+    - module: .
+      archive: .verification/mutation/bootstrap/root.zip
+      ledger: .verification/mutation/migration-ledger.json
+api:
+  baselines:
+    - module: .
+      mode: apidiff
+      path: api/baseline.txt
+operations:
+  - module: .
+    gate: fuzz
+    steps:
+      - type: go-test
+        packages: [.]
+        fuzz: '^FuzzPropagationExtraction$'
+        budget: 10000x
+        timeout: 2m
+      - type: go-test
+        packages: [.]
+        fuzz: '^FuzzTenantIDRoundTrip$'
+        budget: 10000x
+        timeout: 2m
+      - type: go-test
+        packages: [./http]
+        fuzz: '^FuzzHTTPHeaderExtraction$'
+        budget: 10000x
+        timeout: 2m
+      - type: go-test
+        packages: [./jsonrpc]
+        fuzz: '^FuzzJSONRPCMetadata$'
+        budget: 10000x
+        timeout: 2m
+  - module: .
+    gate: benchmark
+    steps:
+      - type: go-test
+        packages: [.]
+        benchmark: .
+        budget: 100ms
+        timeout: 20m

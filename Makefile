@@ -1,11 +1,20 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: check ci inventory repository-check
+.PHONY: check ci config inventory repository-check workflows
+
+config:
+	golib config validate
+
+inventory:
+	golib inventory
+
+repository-check:
+	golib repository check
+
+workflows:
+	golib workflows check
 
 check:
-	./.golib/scripts/with-disposable-go-cache.sh ./.golib/scripts/run-modules.sh check --all
+	golib check --all
 
-ci: repository-check check
-
-inventory repository-check:
-	./.golib/scripts/repository-check.sh
+ci: config inventory repository-check workflows check

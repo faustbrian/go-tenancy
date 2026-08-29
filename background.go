@@ -72,14 +72,20 @@ func (group *Group) Submit(
 		return ErrInvalidOperation
 	}
 	scopedSubmitCtx, err := WithScope(submitCtx, scope)
-	if err != nil {
+	switch err {
+	case nil:
+	default:
 		return err
 	}
-	if err := submitCtx.Err(); err != nil {
-		return err
+	select {
+	case <-submitCtx.Done():
+		return submitCtx.Err()
+	default:
 	}
-	if err := group.ctx.Err(); err != nil {
-		return err
+	select {
+	case <-group.ctx.Done():
+		return group.ctx.Err()
+	default:
 	}
 	select {
 	case group.semaphore <- struct{}{}:
@@ -88,11 +94,15 @@ func (group *Group) Submit(
 	case <-group.ctx.Done():
 		return group.ctx.Err()
 	}
-	if err := submitCtx.Err(); err != nil {
+	switch err := submitCtx.Err(); err {
+	case nil:
+	default:
 		<-group.semaphore
 		return err
 	}
-	if err := group.ctx.Err(); err != nil {
+	switch err := group.ctx.Err(); err {
+	case nil:
+	default:
 		<-group.semaphore
 		return err
 	}

@@ -3,4 +3,4 @@
 .gocache*/
 .DS_Store
 coverage.out
-!package-lock.json
+/golib
