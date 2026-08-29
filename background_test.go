@@ -101,6 +101,31 @@ func TestGroupSubmissionAndShutdownAreCancellable(t *testing.T) {
 	}
 }
 
+func TestGroupHealthySubmissionStartsPromptly(t *testing.T) {
+	t.Parallel()
+
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan struct{})
+	if err := group.Submit(context.Background(), scope, func(context.Context) error {
+		close(started)
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	select {
+	case <-started:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("healthy submission did not start promptly")
+	}
+	if err := shutdownWithin(t, group); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+}
+
 func TestGroupRejectsAlreadyCancelledTaskLifetimeBeforeStartingWork(t *testing.T) {
 	t.Parallel()
 
