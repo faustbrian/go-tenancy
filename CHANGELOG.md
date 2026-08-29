@@ -12,6 +12,11 @@ versioning once released.
 - Delegate CI concurrency control exclusively to the reusable workflow so the
   caller cannot cancel its own shared verification job.
 
+### Documentation
+
+- Remove the archived monorepo documentation link; package guidance remains in
+  the repository-owned documentation.
+
 ## 1.0.0 - 2026-08-25
 
 ### Changed
