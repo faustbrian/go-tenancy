@@ -72,7 +72,9 @@ func (group *Group) Submit(
 		return ErrInvalidOperation
 	}
 	scopedSubmitCtx, err := WithScope(submitCtx, scope)
-	if err != nil {
+	switch err {
+	case nil:
+	default:
 		return err
 	}
 	select {
