@@ -182,7 +182,7 @@ func TestGroupRejectsAlreadyCancelledTaskLifetimeBeforeStartingWork(t *testing.T
 	t.Run("submit cancelled immediately after capacity acquisition", func(t *testing.T) {
 		group, _ := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
 		base, cancelSubmit := context.WithCancel(context.Background())
-		submitContext := &secondErrorHookContext{Context: base, hook: cancelSubmit}
+		submitContext := &firstErrorHookContext{Context: base, hook: cancelSubmit}
 		err := group.Submit(submitContext, scope, func(context.Context) error {
 			t.Error("cancelled submission started work")
 			return nil
@@ -198,7 +198,7 @@ func TestGroupRejectsAlreadyCancelledTaskLifetimeBeforeStartingWork(t *testing.T
 	t.Run("group cancelled immediately after capacity acquisition", func(t *testing.T) {
 		parent, cancelParent := context.WithCancel(context.Background())
 		group, _ := tenancy.NewGroup(parent, tenancy.GroupOptions{MaxConcurrent: 1})
-		submitContext := &secondErrorHookContext{
+		submitContext := &firstErrorHookContext{
 			Context: context.Background(),
 			hook:    cancelParent,
 		}
@@ -436,15 +436,15 @@ func TestGroupValidatesConstructionAndSubmission(t *testing.T) {
 	}
 }
 
-type secondErrorHookContext struct {
+type firstErrorHookContext struct {
 	context.Context
 	calls int
 	hook  func()
 }
 
-func (ctx *secondErrorHookContext) Err() error {
+func (ctx *firstErrorHookContext) Err() error {
 	ctx.calls++
-	if ctx.calls == 2 {
+	if ctx.calls == 1 {
 		ctx.hook()
 	}
 	return ctx.Context.Err()
