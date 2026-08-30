@@ -7,7 +7,7 @@ versioning once released.
 
 ### Changed
 
-- Replace copied verification tooling with the pinned `golib` v1.0.6 release
+- Replace copied verification tooling with the pinned `golib` v1.0.13 release
   while retaining repository-owned API and mutation evidence.
 - Delegate CI concurrency control exclusively to the reusable workflow so the
   caller cannot cancel its own shared verification job.
