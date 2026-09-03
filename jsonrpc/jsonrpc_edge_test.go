@@ -19,6 +19,7 @@ func TestJSONRPCRejectsEveryStructuralAmbiguity(t *testing.T) {
 		`{`,
 		`{"`,
 		`{"trace":`,
+		`{"trace":1]`,
 		`{"trace":1,"trace":2,"tenant_id":"tenant-a"}`,
 		`{"tenant_id":"tenant-a"`,
 	}

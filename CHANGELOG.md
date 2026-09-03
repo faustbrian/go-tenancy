@@ -7,11 +7,12 @@ versioning once released.
 
 ### Changed
 
-- Adopt the checksum-verified `go-library-tools` v1.3.0 CLI, complete the
+- Adopt the checksum-verified `go-library-tools` v1.4.0 CLI, complete the
   module's schema-v2 cohesion metadata, and expose `make cohesion` while
   retaining repository-owned API and mutation evidence.
-- Pin reusable CI to the immutable v1.3.0 workflow so cohesion validation is
-  authoritative alongside the existing repository gates.
+- Pin reusable CI to the immutable v1.4.0 W14-enforcement workflow so cohesion
+  and specification validation are authoritative alongside the existing
+  repository gates.
 - Delegate CI concurrency control exclusively to the reusable workflow so the
   caller cannot cancel its own shared verification job.
 
