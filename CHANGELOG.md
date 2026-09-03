@@ -18,6 +18,7 @@ versioning once released.
 
 ### Documentation
 
+- Link directly to the immutable v1.4.0 Foundations family guidance.
 - Link tenancy consumers to the versioned Golib ecosystem design language and
   publish package-selection guidance for the core, HTTP, JSON-RPC, PostgreSQL,
   and test-support packages.
