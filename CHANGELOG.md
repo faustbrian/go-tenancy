@@ -7,13 +7,19 @@ versioning once released.
 
 ### Changed
 
-- Replace copied verification tooling with the pinned `golib` v1.0.6 release
-  while retaining repository-owned API and mutation evidence.
+- Adopt the checksum-verified `go-library-tools` v1.3.0 CLI, complete the
+  module's schema-v2 cohesion metadata, and expose `make cohesion` while
+  retaining repository-owned API and mutation evidence.
+- Pin reusable CI to the immutable v1.3.0 workflow so cohesion validation is
+  authoritative alongside the existing repository gates.
 - Delegate CI concurrency control exclusively to the reusable workflow so the
   caller cannot cancel its own shared verification job.
 
 ### Documentation
 
+- Link tenancy consumers to the versioned Golib ecosystem design language and
+  publish package-selection guidance for the core, HTTP, JSON-RPC, PostgreSQL,
+  and test-support packages.
 - Remove the archived monorepo documentation link; package guidance remains in
   the repository-owned documentation.
 
