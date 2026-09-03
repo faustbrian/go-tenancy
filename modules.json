@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "repository": "github.com/faustbrian/go-tenancy",
   "go_version": "1.26.6",
   "modules": [
@@ -77,6 +77,96 @@
       "family_label": "Foundations",
       "family_description": "Common immutable values, deterministic seams, configuration, identity propagation, and input validation.",
       "family_order": 1,
+      "cohesion": {
+        "family": "foundations",
+        "secondary_capabilities": [
+          "database-and-storage",
+          "http-and-service-edge"
+        ],
+        "responsibility": "Provide validated tenant identity, explicit tenant, system, and unscoped work, and fail-closed propagation and enforcement seams.",
+        "non_goals": [
+          "Authenticate callers, decide tenant membership, or authorize access.",
+          "Grant PostgreSQL privileges or make row-level security safe when callers bypass the documented predicates, transaction manager, policies, or restricted roles."
+        ],
+        "public_package_identifier": "tenancy",
+        "primary_entry_packages": [
+          "github.com/faustbrian/go-tenancy"
+        ],
+        "package_selection": {
+          "github.com/faustbrian/go-tenancy": "Use for validated tenant identity, explicit scope, propagation, opaque provider namespaces, bounded background work, and administration seams.",
+          "github.com/faustbrian/go-tenancy/http": "Use at authenticated HTTP boundaries for trust-gated tenant extraction, acceptance, injection, and middleware.",
+          "github.com/faustbrian/go-tenancy/jsonrpc": "Use at authenticated JSON-RPC boundaries for bounded, duplicate-safe tenant metadata propagation.",
+          "github.com/faustbrian/go-tenancy/postgres": "Use for explicit tenant predicates, PostgreSQL row-level-security plans, and transaction-local tenant enforcement.",
+          "github.com/faustbrian/go-tenancy/tenancytest": "Use in tests for deterministic tenant and system scopes and tenant assertions."
+        },
+        "lifecycle_status": "active",
+        "maturity": "stable",
+        "construction_styles": [
+          "must-helper",
+          "new-config",
+          "new-options",
+          "plain-function",
+          "validated-value"
+        ],
+        "lifecycle_styles": [
+          "close",
+          "shutdown",
+          "stateless"
+        ],
+        "ownership": {
+          "configuration": "caller",
+          "mutable_inputs": [
+            "borrow",
+            "copy"
+          ],
+          "runtime_resources": "shared",
+          "background_work": "package"
+        },
+        "optional_owned_dependencies": [],
+        "adapters": [
+          "github.com/faustbrian/go-tenancy/http",
+          "github.com/faustbrian/go-tenancy/jsonrpc",
+          "github.com/faustbrian/go-tenancy/postgres"
+        ],
+        "companions": [
+          "github.com/faustbrian/go-tenancy/tenancytest"
+        ],
+        "supported_go": {
+          "minimum": "1.26.6",
+          "tested": [
+            "1.26.6"
+          ]
+        },
+        "supported_platforms": [
+          "portable-go"
+        ],
+        "supported_backends": [
+          "postgresql"
+        ],
+        "supported_protocols": [
+          "http",
+          "json-rpc"
+        ],
+        "documentation": {
+          "readme": "README.md",
+          "api": "https://pkg.go.dev/github.com/faustbrian/go-tenancy",
+          "adoption": "docs/integrations.md",
+          "security": "docs/security.md",
+          "compatibility": "COMPATIBILITY.md",
+          "performance": "docs/hardening.md",
+          "examples": "example_test.go",
+          "faq": "docs/faq.md",
+          "changelog": "CHANGELOG.md",
+          "pkg_go_dev": "https://pkg.go.dev/github.com/faustbrian/go-tenancy",
+          "ecosystem_index": "https://github.com/faustbrian/go-library-tools/blob/v1.3.0/docs/ecosystem/README.md"
+        },
+        "known_good_compatibility_sets": [],
+        "delivery": {
+          "implementation": "in-progress",
+          "hardening": "in-progress",
+          "release": "in-progress"
+        }
+      },
       "version": "1.0.0",
       "tag_prefix": "v",
       "owned_dependencies": [],

@@ -139,3 +139,5 @@ negative proof for declared direct-provider, context-replacement, and telemetry
 cardinality bypasses.
 The current threat-to-test mapping and residual trust boundaries are recorded
 in [`docs/security-review.md`](docs/security-review.md).
+Shared construction, ownership, lifecycle, and composition expectations are in
+the versioned [Golib ecosystem index](https://github.com/faustbrian/go-library-tools/blob/v1.3.0/docs/ecosystem/README.md).
