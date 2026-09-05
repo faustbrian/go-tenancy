@@ -499,7 +499,7 @@ func TestGroupCompletedLifecycleWinsOverCancelledWaitContexts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewGroup() error = %v", err)
 	}
-	if err := group.Drain(context.Background()); err != nil {
+	if err := drainWithin(t, group); err != nil {
 		t.Fatalf("Drain(initial) error = %v", err)
 	}
 
@@ -518,7 +518,22 @@ func TestGroupCompletedLifecycleWinsOverCancelledWaitContexts(t *testing.T) {
 	const callers = 96
 	ready := make(chan struct{}, callers)
 	start := make(chan struct{})
+	releaseCallers := onceClose(start)
 	results := make(chan lifecycleResult, callers)
+	received := 0
+	defer func() {
+		releaseCallers()
+		cleanupDeadline := time.NewTimer(time.Second)
+		defer cleanupDeadline.Stop()
+		for received < callers {
+			select {
+			case <-results:
+				received++
+			case <-cleanupDeadline.C:
+				return
+			}
+		}
+	}()
 	for index := range callers {
 		lifecycle := lifecycles[index%len(lifecycles)]
 		go func() {
@@ -532,11 +547,12 @@ func TestGroupCompletedLifecycleWinsOverCancelledWaitContexts(t *testing.T) {
 	for range callers {
 		waitForSignal(t, ready)
 	}
-	close(start)
+	releaseCallers()
 	deadline := time.After(10 * time.Second)
 	for range callers {
 		select {
 		case result := <-results:
+			received++
 			if result.err != nil {
 				t.Errorf("%s(completed, cancelled context) error = %v", result.name, result.err)
 			}
