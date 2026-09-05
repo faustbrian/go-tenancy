@@ -17,6 +17,8 @@ versioning once released.
   `shutdown` in the module lifecycle metadata.
 - Make terminal group completion win over an already-cancelled per-call wait
   context so repeated and concurrent lifecycle calls return consistently.
+- Release the group-owned context when accepted work eventually finishes after
+  a graceful wait times out, without cancelling that work early.
 - Adopt the checksum-verified `go-library-tools` v1.4.0 CLI, complete the
   module's schema-v2 cohesion metadata, and expose `make cohesion` while
   retaining repository-owned API and mutation evidence.
@@ -31,7 +33,7 @@ versioning once released.
 - Deprecate `Group.Close(ctx)` in favor of `Group.Drain(ctx)`. Existing calls
   remain source compatible and preserve the same drain-then-release behavior.
   Removal cannot occur before `v2.0.0`, the documented support window, and
-  migration of known reverse consumers.
+  migration of every identified `Group.Close` consumer.
 
 ### Documentation
 

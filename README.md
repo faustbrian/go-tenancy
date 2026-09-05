@@ -91,6 +91,9 @@ source-compatible migration. After terminal completion, repeated `Drain`,
 context is already cancelled. Each task receives only its submitted immutable
 scope while preserving the submission context's values, deadline, and
 cancellation. Group-parent cancellation also cancels every task.
+If a graceful wait context ends first, accepted work continues and its final
+completion releases the group-owned context without requiring another lifecycle
+call.
 `Submit` rejects a conflicting scope synchronously before acquiring capacity or
 starting a goroutine. `GroupOptions.HandleError` may be called concurrently by
 independently completing tasks.

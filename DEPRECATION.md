@@ -24,6 +24,9 @@ review.
   operation remains source compatible and preserves tenant isolation,
   concurrent and repeated-call behavior, timeout handling, and ordering.
 - **Removal horizon:** Removal is not permitted before `v2.0.0`. It also
-  requires both known reverse consumers (`go-cloudevents` and `go-service`) to
-  migrate, and must wait until the later of 180 days after the first stable
-  release containing this deprecation or two subsequent stable minor releases.
+  requires every identified `Group.Close` consumer to migrate, and must wait
+  until the later of 180 days after the first stable release containing this
+  deprecation or two subsequent stable minor releases. The reverse-dependency
+  inventory names `go-cloudevents/adapters/golib` and
+  `go-service/integration/reference-http`; inventory membership does not by
+  itself assert that either package calls `Group.Close`.

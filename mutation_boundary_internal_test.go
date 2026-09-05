@@ -2,8 +2,11 @@ package tenancy
 
 import (
 	"context"
+	"errors"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestInternalValidationBoundariesRejectImpossibleMixedState(t *testing.T) {
@@ -65,4 +68,97 @@ func TestInternalTextAndCollectionBoundariesAreInclusive(t *testing.T) {
 			t.Fatalf("ASCII boundary %q was rejected", char)
 		}
 	}
+}
+
+func TestGroupWaitPrefersCompletionAcrossReadyTransition(t *testing.T) {
+	t.Parallel()
+
+	for iteration := range 128 {
+		group := &Group{done: make(chan struct{})}
+		waitContext, cancelWait := context.WithCancel(context.Background())
+		reached := make(chan struct{})
+		proceed := make(chan struct{})
+		result := make(chan error, 1)
+		go func() {
+			result <- group.wait(&blockedDoneContext{
+				Context: waitContext,
+				reached: reached,
+				proceed: proceed,
+			})
+		}()
+		select {
+		case <-reached:
+		case <-time.After(10 * time.Second):
+			t.Fatalf("iteration %d: wait did not reach context selection", iteration)
+		}
+		close(group.done)
+		cancelWait()
+		close(proceed)
+		select {
+		case err := <-result:
+			if err != nil {
+				t.Fatalf("iteration %d: wait error = %v", iteration, err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("iteration %d: wait did not return", iteration)
+		}
+	}
+}
+
+func TestGroupGracefulTimeoutEventuallyReleasesOwnedContext(t *testing.T) {
+	t.Parallel()
+
+	group, err := NewGroup(context.Background(), GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, err := NewTenantScope(MustTenantID("tenant-a"), Metadata{})
+	if err != nil {
+		t.Fatalf("NewTenantScope() error = %v", err)
+	}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	if err := group.Submit(context.Background(), scope, func(context.Context) error {
+		close(started)
+		<-release
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	select {
+	case <-started:
+	case <-time.After(10 * time.Second):
+		t.Fatal("accepted work did not start")
+	}
+	waitContext, cancelWait := context.WithCancel(context.Background())
+	cancelWait()
+	if err := group.Drain(waitContext); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Drain(cancelled context) error = %v", err)
+	}
+	select {
+	case <-group.ctx.Done():
+		t.Fatal("Drain cancelled accepted work after its wait timed out")
+	default:
+	}
+	close(release)
+	select {
+	case <-group.ctx.Done():
+	case <-time.After(time.Second):
+		t.Fatal("final task completion retained the group-owned context")
+	}
+}
+
+type blockedDoneContext struct {
+	context.Context
+	reached chan struct{}
+	proceed chan struct{}
+	once    sync.Once
+}
+
+func (ctx *blockedDoneContext) Done() <-chan struct{} {
+	ctx.once.Do(func() {
+		close(ctx.reached)
+		<-ctx.proceed
+	})
+	return ctx.Context.Done()
 }

@@ -84,7 +84,7 @@ func (group *Group) Submit(
 	}
 	select {
 	case <-group.ctx.Done():
-		return group.ctx.Err()
+		return group.stopError()
 	default:
 	}
 	select {
@@ -92,7 +92,7 @@ func (group *Group) Submit(
 	case <-submitCtx.Done():
 		return submitCtx.Err()
 	case <-group.ctx.Done():
-		return group.ctx.Err()
+		return group.stopError()
 	}
 	switch err := submitCtx.Err(); err {
 	case nil:
@@ -104,7 +104,7 @@ func (group *Group) Submit(
 	case nil:
 	default:
 		<-group.semaphore
-		return err
+		return group.stopError()
 	}
 
 	group.mutex.Lock()
@@ -176,7 +176,11 @@ func (group *Group) complete() {
 	group.mutex.Lock()
 	group.active--
 	group.closeDoneLocked()
+	terminal := group.closed && group.active == 0
 	group.mutex.Unlock()
+	if terminal {
+		group.cancel()
+	}
 }
 
 func (group *Group) beginClose() {
@@ -203,7 +207,12 @@ func (group *Group) wait(ctx context.Context) error {
 	case <-group.done:
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		select {
+		case <-group.done:
+			return nil
+		default:
+			return ctx.Err()
+		}
 	}
 }
 
@@ -211,4 +220,11 @@ func (group *Group) isClosed() bool {
 	group.mutex.Lock()
 	defer group.mutex.Unlock()
 	return group.closed
+}
+
+func (group *Group) stopError() error {
+	if group.isClosed() {
+		return ErrGroupClosed
+	}
+	return group.ctx.Err()
 }
