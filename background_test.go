@@ -405,7 +405,13 @@ func TestGroupConcurrentDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *t
 		}
 	}()
 	for _, reached := range drainReached {
-		waitForSignal(t, reached)
+		select {
+		case <-reached:
+		case err := <-drainResult:
+			t.Fatalf("Drain() returned before all callers joined active work: %v", err)
+		case <-time.After(10 * time.Second):
+			t.Fatal("Drain() did not begin waiting")
+		}
 	}
 	if err := group.Submit(context.Background(), scope, func(context.Context) error { return nil }); !errors.Is(err, tenancy.ErrGroupClosed) {
 		t.Fatalf("Submit(while draining) error = %v", err)
@@ -416,9 +422,16 @@ func TestGroupConcurrentDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *t
 	default:
 	}
 	releaseTask()
+	joinDeadline := time.NewTimer(time.Second)
+	defer joinDeadline.Stop()
 	for range drainers {
-		if err := waitForError(t, drainResult); err != nil {
-			t.Fatalf("Drain() error = %v", err)
+		select {
+		case err := <-drainResult:
+			if err != nil {
+				t.Fatalf("Drain() error = %v", err)
+			}
+		case <-joinDeadline.C:
+			t.Fatal("Drain() callers did not join completed work")
 		}
 	}
 	repeatContext, cancelRepeat := context.WithTimeout(context.Background(), 10*time.Second)
