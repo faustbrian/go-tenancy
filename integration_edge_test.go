@@ -223,6 +223,49 @@ func TestGroupRaceBoundariesAndWaitCancellation(t *testing.T) {
 	_ = closeWithin(t, raceGroup)
 }
 
+func TestGroupRejectsSubmissionWhenGracefulCloseStartsAfterCapacityAcquisition(t *testing.T) {
+	t.Parallel()
+
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 2})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan struct{})
+	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
+	if err := group.Submit(context.Background(), scope, func(context.Context) error {
+		close(started)
+		<-release
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit(active task) error = %v", err)
+	}
+	waitForSignal(t, started)
+
+	closeContext, cancelClose := context.WithCancel(context.Background())
+	cancelClose()
+	var closeErr error
+	submitContext := &firstErrorHookContext{
+		Context: context.Background(),
+		hook: func() {
+			closeErr = group.Drain(closeContext)
+		},
+	}
+	submitErr := group.Submit(submitContext, scope, func(context.Context) error { return nil })
+	if !errors.Is(closeErr, context.Canceled) {
+		t.Fatalf("Drain(cancelled context) error = %v", closeErr)
+	}
+	if !errors.Is(submitErr, tenancy.ErrGroupClosed) {
+		t.Fatalf("Submit(close after capacity) error = %v", submitErr)
+	}
+	releaseTask()
+	if err := group.Drain(context.Background()); err != nil {
+		t.Fatalf("Drain(after release) error = %v", err)
+	}
+}
+
 func waitForSignal(t *testing.T, signal <-chan struct{}) {
 	t.Helper()
 	select {
