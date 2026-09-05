@@ -5,6 +5,8 @@ versioning once released.
 
 ## Unreleased
 
+## 1.1.0 - 2026-09-05
+
 ### Added
 
 - Add `Group.Drain(ctx)` as the explicit graceful lifecycle operation: it stops
