@@ -434,6 +434,58 @@ func TestGroupConcurrentDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *t
 	}
 }
 
+func TestGroupCompletedLifecycleWinsOverCancelledWaitContexts(t *testing.T) {
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	if err := group.Drain(context.Background()); err != nil {
+		t.Fatalf("Drain(initial) error = %v", err)
+	}
+
+	lifecycles := []struct {
+		name string
+		call func(context.Context) error
+	}{
+		{name: "Drain", call: group.Drain},
+		{name: "Close", call: group.Close},
+		{name: "Shutdown", call: group.Shutdown},
+	}
+	type lifecycleResult struct {
+		name string
+		err  error
+	}
+	const callers = 96
+	ready := make(chan struct{}, callers)
+	start := make(chan struct{})
+	results := make(chan lifecycleResult, callers)
+	for index := range callers {
+		lifecycle := lifecycles[index%len(lifecycles)]
+		go func() {
+			waitContext, cancelWait := context.WithCancel(context.Background())
+			cancelWait()
+			ready <- struct{}{}
+			<-start
+			results <- lifecycleResult{name: lifecycle.name, err: lifecycle.call(waitContext)}
+		}()
+	}
+	for range callers {
+		waitForSignal(t, ready)
+	}
+	close(start)
+	deadline := time.After(10 * time.Second)
+	for range callers {
+		select {
+		case result := <-results:
+			if result.err != nil {
+				t.Errorf("%s(completed, cancelled context) error = %v", result.name, result.err)
+			}
+		case <-deadline:
+			t.Fatal("timed out waiting for completed lifecycle call")
+		}
+	}
+}
+
 func TestGroupCloseReleasesOwnedTaskContext(t *testing.T) {
 	t.Parallel()
 

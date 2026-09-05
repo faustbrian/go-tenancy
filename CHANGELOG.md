@@ -15,6 +15,8 @@ versioning once released.
 
 - Declare graceful `drain` alongside compatible `close` and forceful
   `shutdown` in the module lifecycle metadata.
+- Make terminal group completion win over an already-cancelled per-call wait
+  context so repeated and concurrent lifecycle calls return consistently.
 - Adopt the checksum-verified `go-library-tools` v1.4.0 CLI, complete the
   module's schema-v2 cohesion metadata, and expose `make cohesion` while
   retaining repository-owned API and mutation evidence.

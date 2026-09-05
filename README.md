@@ -86,7 +86,9 @@ explicitly; extraction never promotes system or unscoped work into a tenant.
 `Drain` stops intake, waits for accepted work, and then releases the group-owned
 task context; `Shutdown` stops intake and cancels accepted work before waiting.
 The deprecated `Close(ctx)` method delegates to `Drain(ctx)` for
-source-compatible migration. Each task receives only its submitted immutable
+source-compatible migration. After terminal completion, repeated `Drain`,
+`Close`, and `Shutdown` calls return success even when their per-call wait
+context is already cancelled. Each task receives only its submitted immutable
 scope while preserving the submission context's values, deadline, and
 cancellation. Group-parent cancellation also cancels every task.
 `Submit` rejects a conflicting scope synchronously before acquiring capacity or

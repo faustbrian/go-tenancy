@@ -197,6 +197,11 @@ func (group *Group) wait(ctx context.Context) error {
 	select {
 	case <-group.done:
 		return nil
+	default:
+	}
+	select {
+	case <-group.done:
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
