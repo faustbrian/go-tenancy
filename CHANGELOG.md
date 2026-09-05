@@ -19,6 +19,8 @@ versioning once released.
   context so repeated and concurrent lifecycle calls return consistently.
 - Release the group-owned context when accepted work eventually finishes after
   a graceful wait times out, without cancelling that work early.
+- Define mixed lifecycle precedence: concurrent calls join one terminal state,
+  and any `Shutdown` makes active graceful drains forceful.
 - Adopt the checksum-verified `go-library-tools` v1.4.0 CLI, complete the
   module's schema-v2 cohesion metadata, and expose `make cohesion` while
   retaining repository-owned API and mutation evidence.

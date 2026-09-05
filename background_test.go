@@ -486,6 +486,175 @@ func TestGroupCompletedLifecycleWinsOverCancelledWaitContexts(t *testing.T) {
 	}
 }
 
+func TestGroupConcurrentShutdownJoinsCancellationIgnoringTask(t *testing.T) {
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan struct{})
+	cancelled := make(chan struct{})
+	release := make(chan struct{})
+	if err := group.Submit(context.Background(), scope, func(ctx context.Context) error {
+		close(started)
+		select {
+		case <-ctx.Done():
+			close(cancelled)
+			<-release
+		case <-release:
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	waitForSignal(t, started)
+
+	firstContext, cancelFirst := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancelFirst()
+	firstReached := make(chan struct{})
+	firstResult := make(chan error, 1)
+	go func() {
+		firstResult <- group.Shutdown(&doneSignalingContext{
+			Context: firstContext,
+			reached: firstReached,
+		})
+	}()
+	select {
+	case <-firstReached:
+	case err := <-firstResult:
+		close(release)
+		t.Fatalf("Shutdown returned before joining active work: %v", err)
+	case <-time.After(10 * time.Second):
+		close(release)
+		t.Fatal("Shutdown did not reach the shared terminal wait")
+	}
+	select {
+	case <-cancelled:
+	case <-time.After(time.Second):
+		close(release)
+		t.Fatal("Shutdown did not cancel accepted work")
+	}
+	if err := waitForError(t, firstResult); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Shutdown(timeout) error = %v", err)
+	}
+
+	const callers = 8
+	results := make(chan error, callers)
+	reached := make([]chan struct{}, callers)
+	cancels := make([]context.CancelFunc, callers)
+	for index := range callers {
+		shutdownContext, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+		reached[index] = make(chan struct{})
+		cancels[index] = cancelShutdown
+		go func() {
+			results <- group.Shutdown(&doneSignalingContext{
+				Context: shutdownContext,
+				reached: reached[index],
+			})
+		}()
+	}
+	defer func() {
+		for _, cancelShutdown := range cancels {
+			cancelShutdown()
+		}
+	}()
+	for _, signal := range reached {
+		waitForSignal(t, signal)
+	}
+	select {
+	case err := <-results:
+		t.Fatalf("repeated Shutdown returned before task completion: %v", err)
+	default:
+	}
+	close(release)
+	for range callers {
+		if err := waitForError(t, results); err != nil {
+			t.Fatalf("Shutdown(repeated) error = %v", err)
+		}
+	}
+}
+
+func TestGroupActiveDrainBecomesForcefulWhenShutdownJoins(t *testing.T) {
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan struct{})
+	cancelled := make(chan struct{})
+	release := make(chan struct{})
+	if err := group.Submit(context.Background(), scope, func(ctx context.Context) error {
+		close(started)
+		select {
+		case <-ctx.Done():
+			close(cancelled)
+			<-release
+		case <-release:
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	waitForSignal(t, started)
+
+	drainContext, cancelDrain := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelDrain()
+	drainReached := make(chan struct{})
+	drainResult := make(chan error, 1)
+	go func() {
+		drainResult <- group.Drain(&doneSignalingContext{
+			Context: drainContext,
+			reached: drainReached,
+		})
+	}()
+	waitForSignal(t, drainReached)
+	select {
+	case <-cancelled:
+		t.Fatal("Drain cancelled accepted work before Shutdown joined")
+	default:
+	}
+
+	shutdownContext, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelShutdown()
+	shutdownReached := make(chan struct{})
+	shutdownResult := make(chan error, 1)
+	go func() {
+		shutdownResult <- group.Shutdown(&doneSignalingContext{
+			Context: shutdownContext,
+			reached: shutdownReached,
+		})
+	}()
+	select {
+	case <-shutdownReached:
+	case err := <-shutdownResult:
+		close(release)
+		t.Fatalf("Shutdown returned before joining active work: %v", err)
+	case <-time.After(10 * time.Second):
+		close(release)
+		t.Fatal("Shutdown did not reach the shared terminal wait")
+	}
+	select {
+	case <-cancelled:
+	case <-time.After(time.Second):
+		close(release)
+		t.Fatal("Shutdown did not make the active Drain forceful")
+	}
+	select {
+	case err := <-drainResult:
+		t.Fatalf("Drain returned before shared task completion: %v", err)
+	case err := <-shutdownResult:
+		t.Fatalf("Shutdown returned before shared task completion: %v", err)
+	default:
+	}
+	close(release)
+	if err := waitForError(t, drainResult); err != nil {
+		t.Fatalf("Drain(mixed) error = %v", err)
+	}
+	if err := waitForError(t, shutdownResult); err != nil {
+		t.Fatalf("Shutdown(mixed) error = %v", err)
+	}
+}
+
 func TestGroupCloseReleasesOwnedTaskContext(t *testing.T) {
 	t.Parallel()
 

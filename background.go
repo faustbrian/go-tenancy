@@ -24,7 +24,9 @@ type GroupOptions struct {
 
 // Group owns every goroutine it starts. Submit is bounded and cancellable;
 // callers must invoke Drain for graceful completion or Shutdown for
-// cancellation. No task scope is retained between submissions.
+// cancellation. Concurrent lifecycle calls join one terminal state, and any
+// Shutdown cancels the shared task context. No task scope is retained between
+// submissions.
 type Group struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
@@ -122,7 +124,9 @@ func (group *Group) Submit(
 
 // Drain stops new submissions and waits for active tasks without cancelling
 // them. Waiting observes ctx. Drain is safe for concurrent and repeated calls;
-// once accepted work completes, it releases the group-owned task context.
+// once accepted work completes, it releases the group-owned task context. A
+// concurrent Shutdown cancels shared tasks while Drain continues waiting for
+// the same terminal state.
 func (group *Group) Drain(ctx context.Context) error {
 	if group == nil || group.ctx == nil || ctx == nil {
 		return ErrInvalidGroup
@@ -144,6 +148,8 @@ func (group *Group) Close(ctx context.Context) error {
 
 // Shutdown stops new submissions, cancels active tasks, and waits for their
 // return. Waiting observes ctx, while task cancellation uses the group context.
+// Concurrent and repeated lifecycle calls join the same terminal state; any
+// Shutdown makes an active Drain or Close forceful by cancelling shared tasks.
 func (group *Group) Shutdown(ctx context.Context) error {
 	if group == nil || group.ctx == nil || ctx == nil {
 		return ErrInvalidGroup
