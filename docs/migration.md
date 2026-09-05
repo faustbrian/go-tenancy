@@ -1,4 +1,14 @@
-# Migrating ad hoc tenant fields
+# Migration guide
+
+## Background group lifecycle naming
+
+Use `Group.Drain(ctx)` to stop new submissions and wait for accepted work before
+the group releases its owned task context. Use `Group.Shutdown(ctx)` when active
+work must receive group cancellation before the wait. Existing
+`Group.Close(ctx)` calls remain source compatible and delegate to `Drain(ctx)`,
+but should migrate to `Drain(ctx)` so the graceful ordering is explicit.
+
+## Tenant identity and propagation
 
 1. Inventory every tenant-bearing request, job, event, query, cache key,
    idempotency record, search document, workflow, log, metric, and admin path.

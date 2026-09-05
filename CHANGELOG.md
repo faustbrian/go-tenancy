@@ -5,6 +5,12 @@ versioning once released.
 
 ## Unreleased
 
+### Added
+
+- Add `Group.Drain(ctx)` as the explicit graceful lifecycle operation: it stops
+  intake, waits for accepted work without cancelling it, and then releases the
+  group-owned task context.
+
 ### Changed
 
 - Adopt the checksum-verified `go-library-tools` v1.4.0 CLI, complete the
@@ -15,6 +21,11 @@ versioning once released.
   repository gates.
 - Delegate CI concurrency control exclusively to the reusable workflow so the
   caller cannot cancel its own shared verification job.
+
+### Deprecated
+
+- Deprecate `Group.Close(ctx)` in favor of `Group.Drain(ctx)`. Existing calls
+  remain source compatible and preserve the same drain-then-release behavior.
 
 ### Documentation
 

@@ -83,9 +83,12 @@ explicitly; extraction never promotes system or unscoped work into a tenant.
 ## Background and administrative work
 
 `Group` owns every goroutine it starts. Submission is bounded and cancellable;
-`Close` drains work and `Shutdown` cancels it. Each task receives only its
-submitted immutable scope while preserving the submission context's values,
-deadline, and cancellation. Group-parent cancellation also cancels every task.
+`Drain` stops intake, waits for accepted work, and then releases the group-owned
+task context; `Shutdown` stops intake and cancels accepted work before waiting.
+The deprecated `Close(ctx)` method delegates to `Drain(ctx)` for
+source-compatible migration. Each task receives only its submitted immutable
+scope while preserving the submission context's values, deadline, and
+cancellation. Group-parent cancellation also cancels every task.
 `Submit` rejects a conflicting scope synchronously before acquiring capacity or
 starting a goroutine. `GroupOptions.HandleError` may be called concurrently by
 independently completing tasks.

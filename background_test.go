@@ -356,6 +356,85 @@ func TestGroupReportsTaskErrorsOutsideSynchronization(t *testing.T) {
 	}
 }
 
+func TestGroupDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *testing.T) {
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan context.Context, 1)
+	release := make(chan struct{})
+	if err := group.Submit(context.Background(), scope, func(ctx context.Context) error {
+		started <- ctx
+		select {
+		case <-release:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	var taskContext context.Context
+	select {
+	case taskContext = <-started:
+	case <-time.After(time.Second):
+		t.Fatal("accepted work did not start")
+	}
+
+	const drainers = 8
+	drainContext, cancelDrain := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancelDrain()
+	drainResult := make(chan error, drainers)
+	for range drainers {
+		go func() {
+			drainResult <- group.Drain(drainContext)
+		}()
+	}
+	drainStartedDeadline := time.After(time.Second)
+	for {
+		select {
+		case <-drainStartedDeadline:
+			t.Fatal("Drain() did not stop new submissions")
+		default:
+		}
+		probeContext, cancelProbe := context.WithTimeout(context.Background(), time.Millisecond)
+		err := group.Submit(probeContext, scope, func(context.Context) error { return nil })
+		cancelProbe()
+		if errors.Is(err, tenancy.ErrGroupClosed) {
+			break
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			continue
+		}
+		if err != nil {
+			t.Fatalf("Submit(while draining) error = %v", err)
+		}
+	}
+	select {
+	case <-taskContext.Done():
+		t.Fatal("Drain() cancelled accepted work before it completed")
+	default:
+	}
+	close(release)
+	for range drainers {
+		if err := waitForError(t, drainResult); err != nil {
+			t.Fatalf("Drain() error = %v", err)
+		}
+	}
+	if err := group.Drain(drainContext); err != nil {
+		t.Fatalf("Drain(repeated) error = %v", err)
+	}
+	select {
+	case <-taskContext.Done():
+		if !errors.Is(taskContext.Err(), context.Canceled) {
+			t.Fatalf("task context error = %v", taskContext.Err())
+		}
+	default:
+		t.Fatal("Drain() retained the group-owned task context after completion")
+	}
+}
+
 func TestGroupCloseReleasesOwnedTaskContext(t *testing.T) {
 	t.Parallel()
 
@@ -417,6 +496,9 @@ func TestGroupValidatesConstructionAndSubmission(t *testing.T) {
 		t.Fatalf("Shutdown() error = %v", err)
 	}
 	var nilGroup *tenancy.Group
+	if err := nilGroup.Drain(context.Background()); !errors.Is(err, tenancy.ErrInvalidGroup) {
+		t.Fatalf("nil Drain() error = %v", err)
+	}
 	if err := nilGroup.Close(context.Background()); !errors.Is(err, tenancy.ErrInvalidGroup) {
 		t.Fatalf("nil Close() error = %v", err)
 	}
@@ -426,6 +508,10 @@ func TestGroupValidatesConstructionAndSubmission(t *testing.T) {
 	validGroup, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1024})
 	if err != nil {
 		t.Fatalf("NewGroup(maximum) error = %v", err)
+	}
+	//lint:ignore SA1012 Nil context rejection is the contract under test.
+	if err := validGroup.Drain(nil); !errors.Is(err, tenancy.ErrInvalidGroup) { //nolint:staticcheck // Verifies nil-context rejection.
+		t.Fatalf("Drain(nil context) error = %v", err)
 	}
 	//lint:ignore SA1012 Nil context rejection is the contract under test.
 	if err := validGroup.Shutdown(nil); !errors.Is(err, tenancy.ErrInvalidGroup) { //nolint:staticcheck // Verifies nil-context rejection.

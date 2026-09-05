@@ -23,7 +23,7 @@ type GroupOptions struct {
 }
 
 // Group owns every goroutine it starts. Submit is bounded and cancellable;
-// callers must invoke Close for graceful completion or Shutdown for
+// callers must invoke Drain for graceful completion or Shutdown for
 // cancellation. No task scope is retained between submissions.
 type Group struct {
 	ctx         context.Context
@@ -120,9 +120,10 @@ func (group *Group) Submit(
 	return nil
 }
 
-// Close stops new submissions and waits for active tasks without cancelling
-// them. Waiting observes ctx.
-func (group *Group) Close(ctx context.Context) error {
+// Drain stops new submissions and waits for active tasks without cancelling
+// them. Waiting observes ctx. Drain is safe for concurrent and repeated calls;
+// once accepted work completes, it releases the group-owned task context.
+func (group *Group) Drain(ctx context.Context) error {
 	if group == nil || group.ctx == nil || ctx == nil {
 		return ErrInvalidGroup
 	}
@@ -132,6 +133,13 @@ func (group *Group) Close(ctx context.Context) error {
 	}
 	group.cancel()
 	return nil
+}
+
+// Close delegates to Drain and preserves its graceful completion behavior.
+//
+// Deprecated: use Drain.
+func (group *Group) Close(ctx context.Context) error {
+	return group.Drain(ctx)
 }
 
 // Shutdown stops new submissions, cancels active tasks, and waits for their

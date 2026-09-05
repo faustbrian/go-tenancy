@@ -165,8 +165,8 @@ func TestGroupRaceBoundariesAndWaitCancellation(t *testing.T) {
 	waitForSignal(t, started)
 	timed, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
-	if err := group.Close(timed); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("Close(timeout) error = %v", err)
+	if err := group.Drain(timed); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Drain(timeout) error = %v", err)
 	}
 	close(release)
 	if err := closeWithin(t, group); err != nil {
