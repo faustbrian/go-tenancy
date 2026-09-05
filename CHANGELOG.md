@@ -28,6 +28,8 @@ versioning once released.
 
 - Deprecate `Group.Close(ctx)` in favor of `Group.Drain(ctx)`. Existing calls
   remain source compatible and preserve the same drain-then-release behavior.
+  Removal cannot occur before `v2.0.0`, the documented support window, and
+  migration of known reverse consumers.
 
 ### Documentation
 

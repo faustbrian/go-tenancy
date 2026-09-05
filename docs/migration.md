@@ -6,7 +6,11 @@ Use `Group.Drain(ctx)` to stop new submissions and wait for accepted work before
 the group releases its owned task context. Use `Group.Shutdown(ctx)` when active
 work must receive group cancellation before the wait. Existing
 `Group.Close(ctx)` calls remain source compatible and delegate to `Drain(ctx)`,
-but should migrate to `Drain(ctx)` so the graceful ordering is explicit.
+but should migrate to `Drain(ctx)` so the graceful ordering is explicit. Close
+will not be removed before `v2.0.0`, both known reverse consumers have migrated,
+and the later of 180 days after the first stable release containing the
+deprecation or two subsequent stable minor releases. See the active record in
+[the deprecation policy](../DEPRECATION.md#groupclosectx).
 
 ## Tenant identity and propagation
 
