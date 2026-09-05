@@ -154,6 +154,8 @@ func TestGroupRaceBoundariesAndWaitCancellation(t *testing.T) {
 		t.Fatalf("Submit(nil context) error = %v", err)
 	}
 	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
 	started := make(chan struct{})
 	if err := submitWithin(t, group, scope, func(context.Context) error {
 		close(started)
@@ -165,10 +167,10 @@ func TestGroupRaceBoundariesAndWaitCancellation(t *testing.T) {
 	waitForSignal(t, started)
 	timed, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
-	if err := group.Close(timed); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("Close(timeout) error = %v", err)
+	if err := group.Drain(timed); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Drain(timeout) error = %v", err)
 	}
-	close(release)
+	releaseTask()
 	if err := closeWithin(t, group); err != nil {
 		t.Fatalf("Close(after release) error = %v", err)
 	}
@@ -223,6 +225,58 @@ func TestGroupRaceBoundariesAndWaitCancellation(t *testing.T) {
 	_ = closeWithin(t, raceGroup)
 }
 
+func TestGroupRejectsSubmissionWhenGracefulCloseStartsAfterCapacityAcquisition(t *testing.T) {
+	t.Parallel()
+
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 2})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan struct{})
+	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
+	if err := group.Submit(context.Background(), scope, func(context.Context) error {
+		close(started)
+		<-release
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit(active task) error = %v", err)
+	}
+	waitForSignal(t, started)
+
+	closeContext, cancelClose := context.WithCancel(context.Background())
+	cancelClose()
+	var closeErr error
+	rejectedStarted := make(chan struct{})
+	submitContext := &firstErrorHookContext{
+		Context: context.Background(),
+		hook: func() {
+			closeErr = group.Drain(closeContext)
+		},
+	}
+	submitErr := group.Submit(submitContext, scope, func(context.Context) error {
+		close(rejectedStarted)
+		return nil
+	})
+	if !errors.Is(closeErr, context.Canceled) {
+		t.Fatalf("Drain(cancelled context) error = %v", closeErr)
+	}
+	if !errors.Is(submitErr, tenancy.ErrGroupClosed) {
+		t.Fatalf("Submit(close after capacity) error = %v", submitErr)
+	}
+	releaseTask()
+	if err := drainWithin(t, group); err != nil {
+		t.Fatalf("Drain(after release) error = %v", err)
+	}
+	select {
+	case <-rejectedStarted:
+		t.Fatal("rejected operation started")
+	default:
+	}
+}
+
 func waitForSignal(t *testing.T, signal <-chan struct{}) {
 	t.Helper()
 	select {
@@ -249,6 +303,13 @@ func closeWithin(t *testing.T, group *tenancy.Group) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	return group.Close(ctx)
+}
+
+func drainWithin(t *testing.T, group *tenancy.Group) error {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	return group.Drain(ctx)
 }
 
 func shutdownWithin(t *testing.T, group *tenancy.Group) error {

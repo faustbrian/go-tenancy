@@ -2,8 +2,11 @@ package tenancy
 
 import (
 	"context"
+	"errors"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestInternalValidationBoundariesRejectImpossibleMixedState(t *testing.T) {
@@ -65,4 +68,183 @@ func TestInternalTextAndCollectionBoundariesAreInclusive(t *testing.T) {
 			t.Fatalf("ASCII boundary %q was rejected", char)
 		}
 	}
+}
+
+func TestGroupWaitPrefersCompletionAcrossReadyTransition(t *testing.T) {
+	t.Parallel()
+
+	for iteration := range 128 {
+		func() {
+			group := &Group{done: make(chan struct{})}
+			waitContext, cancelWait := context.WithCancel(context.Background())
+			reached := make(chan struct{})
+			proceed := make(chan struct{})
+			var proceedOnce sync.Once
+			releaseProceed := func() {
+				proceedOnce.Do(func() { close(proceed) })
+			}
+			result := make(chan error, 1)
+			joined := false
+			defer func() {
+				releaseProceed()
+				cancelWait()
+				if joined {
+					return
+				}
+				select {
+				case <-result:
+				case <-time.After(time.Second):
+				}
+			}()
+			go func() {
+				result <- group.wait(&blockedDoneContext{
+					Context: waitContext,
+					reached: reached,
+					proceed: proceed,
+				})
+			}()
+			select {
+			case <-reached:
+			case <-time.After(10 * time.Second):
+				t.Fatalf("iteration %d: wait did not reach context selection", iteration)
+			}
+			close(group.done)
+			cancelWait()
+			releaseProceed()
+			select {
+			case err := <-result:
+				joined = true
+				if err != nil {
+					t.Fatalf("iteration %d: wait error = %v", iteration, err)
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatalf("iteration %d: wait did not return", iteration)
+			}
+		}()
+	}
+}
+
+func TestGroupGracefulTimeoutEventuallyReleasesOwnedContext(t *testing.T) {
+	t.Parallel()
+
+	group, err := NewGroup(context.Background(), GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, err := NewTenantScope(MustTenantID("tenant-a"), Metadata{})
+	if err != nil {
+		t.Fatalf("NewTenantScope() error = %v", err)
+	}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseTask := func() {
+		releaseOnce.Do(func() { close(release) })
+	}
+	defer releaseTask()
+	if err := group.Submit(context.Background(), scope, func(context.Context) error {
+		close(started)
+		<-release
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	select {
+	case <-started:
+	case <-time.After(10 * time.Second):
+		t.Fatal("accepted work did not start")
+	}
+	waitContext, cancelWait := context.WithCancel(context.Background())
+	cancelWait()
+	if err := group.Drain(waitContext); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Drain(cancelled context) error = %v", err)
+	}
+	select {
+	case <-group.ctx.Done():
+		t.Fatal("Drain cancelled accepted work after its wait timed out")
+	default:
+	}
+	releaseTask()
+	select {
+	case <-group.ctx.Done():
+	case <-time.After(time.Second):
+		t.Fatal("final task completion retained the group-owned context")
+	}
+}
+
+func TestGroupRemainsOpenAfterCurrentWorkCompletes(t *testing.T) {
+	t.Parallel()
+
+	group, err := NewGroup(context.Background(), GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, err := NewTenantScope(MustTenantID("tenant-a"), Metadata{})
+	if err != nil {
+		t.Fatalf("NewTenantScope() error = %v", err)
+	}
+	group.semaphore <- struct{}{}
+	group.mutex.Lock()
+	group.active = 1
+	group.mutex.Unlock()
+	group.complete()
+	group.mutex.Lock()
+	active := group.active
+	group.mutex.Unlock()
+	if active != 0 {
+		t.Fatalf("active tasks after completion = %d", active)
+	}
+	select {
+	case <-group.ctx.Done():
+		t.Fatal("completing current work cancelled an open group")
+	default:
+	}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseTask := func() {
+		releaseOnce.Do(func() { close(release) })
+	}
+	defer releaseTask()
+	submitContext, cancelSubmit := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelSubmit()
+	if err := group.Submit(submitContext, scope, func(context.Context) error {
+		close(started)
+		<-release
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit(after current work) error = %v", err)
+	}
+	select {
+	case <-started:
+	case <-time.After(10 * time.Second):
+		t.Fatal("reused group task did not start")
+	}
+	group.mutex.Lock()
+	active = group.active
+	group.mutex.Unlock()
+	if active != 1 {
+		t.Fatalf("active tasks after submission = %d", active)
+	}
+	releaseTask()
+	drainContext, cancelDrain := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelDrain()
+	if err := group.Drain(drainContext); err != nil {
+		t.Fatalf("Drain() error = %v", err)
+	}
+}
+
+type blockedDoneContext struct {
+	context.Context
+	reached chan struct{}
+	proceed chan struct{}
+	once    sync.Once
+}
+
+func (ctx *blockedDoneContext) Done() <-chan struct{} {
+	ctx.once.Do(func() {
+		close(ctx.reached)
+		<-ctx.proceed
+	})
+	return ctx.Context.Done()
 }

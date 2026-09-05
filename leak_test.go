@@ -42,9 +42,12 @@ func TestGroupStressCloseAndShutdownDoNotLeak(t *testing.T) {
 		}
 		closeContext, cancel := context.WithTimeout(context.Background(), time.Second)
 		var closeErr error
-		if iteration%2 == 0 {
+		switch iteration % 3 {
+		case 0:
+			closeErr = group.Drain(closeContext)
+		case 1:
 			closeErr = group.Close(closeContext)
-		} else {
+		default:
 			closeErr = group.Shutdown(closeContext)
 		}
 		if closeErr != nil {

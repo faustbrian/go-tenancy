@@ -23,8 +23,10 @@ type GroupOptions struct {
 }
 
 // Group owns every goroutine it starts. Submit is bounded and cancellable;
-// callers must invoke Close for graceful completion or Shutdown for
-// cancellation. No task scope is retained between submissions.
+// callers must invoke Drain for graceful completion or Shutdown for
+// cancellation. Concurrent lifecycle calls join one terminal state while each
+// call observes its own wait context, and any Shutdown cancels the shared task
+// context. No task scope is retained between submissions.
 type Group struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
@@ -84,7 +86,7 @@ func (group *Group) Submit(
 	}
 	select {
 	case <-group.ctx.Done():
-		return group.ctx.Err()
+		return group.stopError()
 	default:
 	}
 	select {
@@ -92,7 +94,7 @@ func (group *Group) Submit(
 	case <-submitCtx.Done():
 		return submitCtx.Err()
 	case <-group.ctx.Done():
-		return group.ctx.Err()
+		return group.stopError()
 	}
 	switch err := submitCtx.Err(); err {
 	case nil:
@@ -104,7 +106,7 @@ func (group *Group) Submit(
 	case nil:
 	default:
 		<-group.semaphore
-		return err
+		return group.stopError()
 	}
 
 	group.mutex.Lock()
@@ -120,9 +122,12 @@ func (group *Group) Submit(
 	return nil
 }
 
-// Close stops new submissions and waits for active tasks without cancelling
-// them. Waiting observes ctx.
-func (group *Group) Close(ctx context.Context) error {
+// Drain stops new submissions and waits for active tasks without cancelling
+// them. Waiting observes ctx. Drain is safe for concurrent and repeated calls;
+// once accepted work completes, it releases the group-owned task context. A
+// concurrent Shutdown cancels shared tasks while Drain continues waiting for
+// the same terminal state.
+func (group *Group) Drain(ctx context.Context) error {
 	if group == nil || group.ctx == nil || ctx == nil {
 		return ErrInvalidGroup
 	}
@@ -134,8 +139,17 @@ func (group *Group) Close(ctx context.Context) error {
 	return nil
 }
 
+// Close delegates to Drain and preserves its graceful completion behavior.
+//
+// Deprecated: use Drain.
+func (group *Group) Close(ctx context.Context) error {
+	return group.Drain(ctx)
+}
+
 // Shutdown stops new submissions, cancels active tasks, and waits for their
 // return. Waiting observes ctx, while task cancellation uses the group context.
+// Concurrent and repeated lifecycle calls join the same terminal state; any
+// Shutdown makes an active Drain or Close forceful by cancelling shared tasks.
 func (group *Group) Shutdown(ctx context.Context) error {
 	if group == nil || group.ctx == nil || ctx == nil {
 		return ErrInvalidGroup
@@ -168,7 +182,11 @@ func (group *Group) complete() {
 	group.mutex.Lock()
 	group.active--
 	group.closeDoneLocked()
+	terminal := group.closed && group.active == 0
 	group.mutex.Unlock()
+	if terminal {
+		group.cancel()
+	}
 }
 
 func (group *Group) beginClose() {
@@ -189,8 +207,18 @@ func (group *Group) wait(ctx context.Context) error {
 	select {
 	case <-group.done:
 		return nil
+	default:
+	}
+	select {
+	case <-group.done:
+		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		select {
+		case <-group.done:
+			return nil
+		default:
+			return ctx.Err()
+		}
 	}
 }
 
@@ -198,4 +226,11 @@ func (group *Group) isClosed() bool {
 	group.mutex.Lock()
 	defer group.mutex.Unlock()
 	return group.closed
+}
+
+func (group *Group) stopError() error {
+	if group.isClosed() {
+		return ErrGroupClosed
+	}
+	return group.ctx.Err()
 }

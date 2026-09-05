@@ -5,8 +5,22 @@ versioning once released.
 
 ## Unreleased
 
+### Added
+
+- Add `Group.Drain(ctx)` as the explicit graceful lifecycle operation: it stops
+  intake, waits for accepted work without cancelling it, and then releases the
+  group-owned task context.
+
 ### Changed
 
+- Declare graceful `drain` alongside compatible `close` and forceful
+  `shutdown` in the module lifecycle metadata.
+- Make terminal group completion win over an already-cancelled per-call wait
+  context so repeated and concurrent lifecycle calls return consistently.
+- Release the group-owned context when accepted work eventually finishes after
+  a graceful wait times out, without cancelling that work early.
+- Define mixed lifecycle precedence: concurrent calls join one terminal state,
+  and any `Shutdown` makes active graceful drains forceful.
 - Adopt the checksum-verified `go-library-tools` v1.4.0 CLI, complete the
   module's schema-v2 cohesion metadata, and expose `make cohesion` while
   retaining repository-owned API and mutation evidence.
@@ -15,6 +29,13 @@ versioning once released.
   repository gates.
 - Delegate CI concurrency control exclusively to the reusable workflow so the
   caller cannot cancel its own shared verification job.
+
+### Deprecated
+
+- Deprecate `Group.Close(ctx)` in favor of `Group.Drain(ctx)`. Existing calls
+  remain source compatible and preserve the same drain-then-release behavior.
+  Removal cannot occur before `v2.0.0`, the documented support window, and
+  migration of every identified `Group.Close` consumer.
 
 ### Documentation
 
