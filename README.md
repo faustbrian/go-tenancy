@@ -87,7 +87,7 @@ explicitly; extraction never promotes system or unscoped work into a tenant.
 task context; `Shutdown` stops intake and cancels accepted work before waiting.
 Concurrent lifecycle calls join the same terminal state. Any `Shutdown` makes
 an active `Drain` or `Close` forceful by cancelling the shared task context;
-all callers still wait for accepted work to return.
+each caller waits for accepted work only until its own wait context ends.
 The deprecated `Close(ctx)` method delegates to `Drain(ctx)` for
 source-compatible migration. After terminal completion, repeated `Drain`,
 `Close`, and `Shutdown` calls return success even when their per-call wait

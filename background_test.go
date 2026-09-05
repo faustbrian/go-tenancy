@@ -364,6 +364,8 @@ func TestGroupConcurrentDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *t
 	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
 	started := make(chan context.Context, 1)
 	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
 	if err := group.Submit(context.Background(), scope, func(ctx context.Context) error {
 		started <- ctx
 		select {
@@ -413,7 +415,7 @@ func TestGroupConcurrentDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *t
 		t.Fatal("Drain() cancelled accepted work before it completed")
 	default:
 	}
-	close(release)
+	releaseTask()
 	for range drainers {
 		if err := waitForError(t, drainResult); err != nil {
 			t.Fatalf("Drain() error = %v", err)
@@ -495,6 +497,8 @@ func TestGroupConcurrentShutdownJoinsCancellationIgnoringTask(t *testing.T) {
 	started := make(chan struct{})
 	cancelled := make(chan struct{})
 	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
 	if err := group.Submit(context.Background(), scope, func(ctx context.Context) error {
 		close(started)
 		select {
@@ -519,19 +523,10 @@ func TestGroupConcurrentShutdownJoinsCancellationIgnoringTask(t *testing.T) {
 			reached: firstReached,
 		})
 	}()
-	select {
-	case <-firstReached:
-	case err := <-firstResult:
-		close(release)
-		t.Fatalf("Shutdown returned before joining active work: %v", err)
-	case <-time.After(10 * time.Second):
-		close(release)
-		t.Fatal("Shutdown did not reach the shared terminal wait")
-	}
+	waitForSignal(t, firstReached)
 	select {
 	case <-cancelled:
 	case <-time.After(time.Second):
-		close(release)
 		t.Fatal("Shutdown did not cancel accepted work")
 	}
 	if err := waitForError(t, firstResult); !errors.Is(err, context.DeadlineExceeded) {
@@ -566,7 +561,7 @@ func TestGroupConcurrentShutdownJoinsCancellationIgnoringTask(t *testing.T) {
 		t.Fatalf("repeated Shutdown returned before task completion: %v", err)
 	default:
 	}
-	close(release)
+	releaseTask()
 	for range callers {
 		if err := waitForError(t, results); err != nil {
 			t.Fatalf("Shutdown(repeated) error = %v", err)
@@ -583,6 +578,8 @@ func TestGroupActiveDrainBecomesForcefulWhenShutdownJoins(t *testing.T) {
 	started := make(chan struct{})
 	cancelled := make(chan struct{})
 	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
 	if err := group.Submit(context.Background(), scope, func(ctx context.Context) error {
 		close(started)
 		select {
@@ -624,19 +621,10 @@ func TestGroupActiveDrainBecomesForcefulWhenShutdownJoins(t *testing.T) {
 			reached: shutdownReached,
 		})
 	}()
-	select {
-	case <-shutdownReached:
-	case err := <-shutdownResult:
-		close(release)
-		t.Fatalf("Shutdown returned before joining active work: %v", err)
-	case <-time.After(10 * time.Second):
-		close(release)
-		t.Fatal("Shutdown did not reach the shared terminal wait")
-	}
+	waitForSignal(t, shutdownReached)
 	select {
 	case <-cancelled:
 	case <-time.After(time.Second):
-		close(release)
 		t.Fatal("Shutdown did not make the active Drain forceful")
 	}
 	select {
@@ -646,12 +634,77 @@ func TestGroupActiveDrainBecomesForcefulWhenShutdownJoins(t *testing.T) {
 		t.Fatalf("Shutdown returned before shared task completion: %v", err)
 	default:
 	}
-	close(release)
+	releaseTask()
 	if err := waitForError(t, drainResult); err != nil {
 		t.Fatalf("Drain(mixed) error = %v", err)
 	}
 	if err := waitForError(t, shutdownResult); err != nil {
 		t.Fatalf("Shutdown(mixed) error = %v", err)
+	}
+}
+
+func TestGroupActiveShutdownAndDrainJoinInShutdownOrder(t *testing.T) {
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan struct{})
+	cancelled := make(chan struct{})
+	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
+	if err := group.Submit(context.Background(), scope, func(ctx context.Context) error {
+		close(started)
+		select {
+		case <-ctx.Done():
+			close(cancelled)
+			<-release
+		case <-release:
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	waitForSignal(t, started)
+
+	shutdownContext, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelShutdown()
+	shutdownReached := make(chan struct{})
+	shutdownResult := make(chan error, 1)
+	go func() {
+		shutdownResult <- group.Shutdown(&doneSignalingContext{
+			Context: shutdownContext,
+			reached: shutdownReached,
+		})
+	}()
+	waitForSignal(t, shutdownReached)
+	waitForSignal(t, cancelled)
+
+	drainContext, cancelDrain := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelDrain()
+	drainReached := make(chan struct{})
+	drainResult := make(chan error, 1)
+	go func() {
+		drainResult <- group.Drain(&doneSignalingContext{
+			Context: drainContext,
+			reached: drainReached,
+		})
+	}()
+	waitForSignal(t, drainReached)
+	select {
+	case err := <-shutdownResult:
+		t.Fatalf("Shutdown returned before shared task completion: %v", err)
+	case err := <-drainResult:
+		t.Fatalf("Drain returned before shared task completion: %v", err)
+	default:
+	}
+	releaseTask()
+	if err := waitForError(t, shutdownResult); err != nil {
+		t.Fatalf("Shutdown(mixed reverse) error = %v", err)
+	}
+	if err := waitForError(t, drainResult); err != nil {
+		t.Fatalf("Drain(mixed reverse) error = %v", err)
 	}
 }
 
@@ -746,6 +799,13 @@ type firstErrorHookContext struct {
 	context.Context
 	calls int
 	hook  func()
+}
+
+func onceClose(signal chan struct{}) func() {
+	var once sync.Once
+	return func() {
+		once.Do(func() { close(signal) })
+	}
 }
 
 func (ctx *firstErrorHookContext) Err() error {

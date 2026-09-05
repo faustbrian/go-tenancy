@@ -118,6 +118,11 @@ func TestGroupGracefulTimeoutEventuallyReleasesOwnedContext(t *testing.T) {
 	}
 	started := make(chan struct{})
 	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseTask := func() {
+		releaseOnce.Do(func() { close(release) })
+	}
+	defer releaseTask()
 	if err := group.Submit(context.Background(), scope, func(context.Context) error {
 		close(started)
 		<-release
@@ -140,7 +145,7 @@ func TestGroupGracefulTimeoutEventuallyReleasesOwnedContext(t *testing.T) {
 		t.Fatal("Drain cancelled accepted work after its wait timed out")
 	default:
 	}
-	close(release)
+	releaseTask()
 	select {
 	case <-group.ctx.Done():
 	case <-time.After(time.Second):

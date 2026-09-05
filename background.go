@@ -24,9 +24,9 @@ type GroupOptions struct {
 
 // Group owns every goroutine it starts. Submit is bounded and cancellable;
 // callers must invoke Drain for graceful completion or Shutdown for
-// cancellation. Concurrent lifecycle calls join one terminal state, and any
-// Shutdown cancels the shared task context. No task scope is retained between
-// submissions.
+// cancellation. Concurrent lifecycle calls join one terminal state while each
+// call observes its own wait context, and any Shutdown cancels the shared task
+// context. No task scope is retained between submissions.
 type Group struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
