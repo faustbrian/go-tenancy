@@ -3,6 +3,7 @@ package tenancy
 import (
 	"context"
 	"errors"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -150,6 +151,59 @@ func TestGroupGracefulTimeoutEventuallyReleasesOwnedContext(t *testing.T) {
 	case <-group.ctx.Done():
 	case <-time.After(time.Second):
 		t.Fatal("final task completion retained the group-owned context")
+	}
+}
+
+func TestGroupRemainsOpenAfterCurrentWorkCompletes(t *testing.T) {
+	t.Parallel()
+
+	group, err := NewGroup(context.Background(), GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, err := NewTenantScope(MustTenantID("tenant-a"), Metadata{})
+	if err != nil {
+		t.Fatalf("NewTenantScope() error = %v", err)
+	}
+	returned := make(chan struct{})
+	if err := group.Submit(context.Background(), scope, func(context.Context) error {
+		close(returned)
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit(first) error = %v", err)
+	}
+	select {
+	case <-returned:
+	case <-time.After(10 * time.Second):
+		t.Fatal("first task did not return")
+	}
+
+	deadline := time.NewTimer(10 * time.Second)
+	defer deadline.Stop()
+	for {
+		group.mutex.Lock()
+		active := group.active
+		group.mutex.Unlock()
+		if active == 0 {
+			break
+		}
+		select {
+		case <-deadline.C:
+			t.Fatal("first task did not complete")
+		default:
+		}
+		runtime.Gosched()
+	}
+	select {
+	case <-group.ctx.Done():
+		t.Fatal("completing current work cancelled an open group")
+	default:
+	}
+	if err := group.Submit(context.Background(), scope, func(context.Context) error { return nil }); err != nil {
+		t.Fatalf("Submit(after current work) error = %v", err)
+	}
+	if err := group.Drain(context.Background()); err != nil {
+		t.Fatalf("Drain() error = %v", err)
 	}
 }
 

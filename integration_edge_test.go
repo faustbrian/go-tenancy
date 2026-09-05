@@ -154,6 +154,8 @@ func TestGroupRaceBoundariesAndWaitCancellation(t *testing.T) {
 		t.Fatalf("Submit(nil context) error = %v", err)
 	}
 	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
 	started := make(chan struct{})
 	if err := submitWithin(t, group, scope, func(context.Context) error {
 		close(started)
@@ -168,7 +170,7 @@ func TestGroupRaceBoundariesAndWaitCancellation(t *testing.T) {
 	if err := group.Drain(timed); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Drain(timeout) error = %v", err)
 	}
-	close(release)
+	releaseTask()
 	if err := closeWithin(t, group); err != nil {
 		t.Fatalf("Close(after release) error = %v", err)
 	}

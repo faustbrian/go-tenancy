@@ -436,6 +436,51 @@ func TestGroupConcurrentDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *t
 	}
 }
 
+func TestGroupDrainJoinsActiveWorkBeforeReturning(t *testing.T) {
+	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
+	if err != nil {
+		t.Fatalf("NewGroup() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	started := make(chan struct{})
+	release := make(chan struct{})
+	releaseTask := onceClose(release)
+	defer releaseTask()
+	if err := group.Submit(context.Background(), scope, func(context.Context) error {
+		close(started)
+		<-release
+		return nil
+	}); err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	waitForSignal(t, started)
+
+	drainContext, cancelDrain := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelDrain()
+	reached := make(chan struct{})
+	result := make(chan error, 1)
+	go func() {
+		result <- group.Drain(&doneSignalingContext{Context: drainContext, reached: reached})
+	}()
+	select {
+	case <-reached:
+	case err := <-result:
+		t.Fatalf("Drain() returned before joining active work: %v", err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("Drain() did not begin waiting")
+	}
+	select {
+	case err := <-result:
+		t.Fatalf("Drain() returned while accepted work remained active: %v", err)
+	default:
+	}
+
+	releaseTask()
+	if err := waitForError(t, result); err != nil {
+		t.Fatalf("Drain() error = %v", err)
+	}
+}
+
 func TestGroupCompletedLifecycleWinsOverCancelledWaitContexts(t *testing.T) {
 	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
 	if err != nil {
