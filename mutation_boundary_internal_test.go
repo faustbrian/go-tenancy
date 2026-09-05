@@ -199,7 +199,9 @@ func TestGroupRemainsOpenAfterCurrentWorkCompletes(t *testing.T) {
 		t.Fatal("completing current work cancelled an open group")
 	default:
 	}
-	if err := group.Submit(context.Background(), scope, func(context.Context) error { return nil }); err != nil {
+	submitContext, cancelSubmit := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelSubmit()
+	if err := group.Submit(submitContext, scope, func(context.Context) error { return nil }); err != nil {
 		t.Fatalf("Submit(after current work) error = %v", err)
 	}
 	drainContext, cancelDrain := context.WithTimeout(context.Background(), 10*time.Second)
