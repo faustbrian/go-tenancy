@@ -13,6 +13,8 @@ versioning once released.
 
 ### Changed
 
+- Declare graceful `drain` alongside compatible `close` and forceful
+  `shutdown` in the module lifecycle metadata.
 - Adopt the checksum-verified `go-library-tools` v1.4.0 CLI, complete the
   module's schema-v2 cohesion metadata, and expose `make cohesion` while
   retaining repository-owned API and mutation evidence.

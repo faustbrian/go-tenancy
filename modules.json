@@ -110,6 +110,7 @@
         ],
         "lifecycle_styles": [
           "close",
+          "drain",
           "shutdown",
           "stateless"
         ],

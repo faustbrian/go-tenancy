@@ -356,7 +356,7 @@ func TestGroupReportsTaskErrorsOutsideSynchronization(t *testing.T) {
 	}
 }
 
-func TestGroupDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *testing.T) {
+func TestGroupConcurrentDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *testing.T) {
 	group, err := tenancy.NewGroup(context.Background(), tenancy.GroupOptions{MaxConcurrent: 1})
 	if err != nil {
 		t.Fatalf("NewGroup() error = %v", err)
@@ -383,33 +383,30 @@ func TestGroupDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *testing.T) 
 	}
 
 	const drainers = 8
-	drainContext, cancelDrain := context.WithTimeout(context.Background(), 250*time.Millisecond)
-	defer cancelDrain()
 	drainResult := make(chan error, drainers)
-	for range drainers {
+	drainReached := make([]chan struct{}, drainers)
+	drainCancels := make([]context.CancelFunc, drainers)
+	for index := range drainers {
+		drainContext, cancelDrain := context.WithTimeout(context.Background(), 10*time.Second)
+		drainReached[index] = make(chan struct{})
+		drainCancels[index] = cancelDrain
 		go func() {
-			drainResult <- group.Drain(drainContext)
+			drainResult <- group.Drain(&doneSignalingContext{
+				Context: drainContext,
+				reached: drainReached[index],
+			})
 		}()
 	}
-	drainStartedDeadline := time.After(time.Second)
-	for {
-		select {
-		case <-drainStartedDeadline:
-			t.Fatal("Drain() did not stop new submissions")
-		default:
+	defer func() {
+		for _, cancelDrain := range drainCancels {
+			cancelDrain()
 		}
-		probeContext, cancelProbe := context.WithTimeout(context.Background(), time.Millisecond)
-		err := group.Submit(probeContext, scope, func(context.Context) error { return nil })
-		cancelProbe()
-		if errors.Is(err, tenancy.ErrGroupClosed) {
-			break
-		}
-		if errors.Is(err, context.DeadlineExceeded) {
-			continue
-		}
-		if err != nil {
-			t.Fatalf("Submit(while draining) error = %v", err)
-		}
+	}()
+	for _, reached := range drainReached {
+		waitForSignal(t, reached)
+	}
+	if err := group.Submit(context.Background(), scope, func(context.Context) error { return nil }); !errors.Is(err, tenancy.ErrGroupClosed) {
+		t.Fatalf("Submit(while draining) error = %v", err)
 	}
 	select {
 	case <-taskContext.Done():
@@ -422,7 +419,9 @@ func TestGroupDrainWaitsForAcceptedWorkBeforeCancellingItsContext(t *testing.T) 
 			t.Fatalf("Drain() error = %v", err)
 		}
 	}
-	if err := group.Drain(drainContext); err != nil {
+	repeatContext, cancelRepeat := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelRepeat()
+	if err := group.Drain(repeatContext); err != nil {
 		t.Fatalf("Drain(repeated) error = %v", err)
 	}
 	select {
