@@ -202,7 +202,9 @@ func TestGroupRemainsOpenAfterCurrentWorkCompletes(t *testing.T) {
 	if err := group.Submit(context.Background(), scope, func(context.Context) error { return nil }); err != nil {
 		t.Fatalf("Submit(after current work) error = %v", err)
 	}
-	if err := group.Drain(context.Background()); err != nil {
+	drainContext, cancelDrain := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelDrain()
+	if err := group.Drain(drainContext); err != nil {
 		t.Fatalf("Drain() error = %v", err)
 	}
 }
