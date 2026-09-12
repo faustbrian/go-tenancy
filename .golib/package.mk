@@ -4,7 +4,10 @@ BENCH_TIME ?= 100ms
 SOAK_TIME ?= 30s
 SOAK_TIMEOUT ?= 2m
 
-.PHONY: analyzers benchmark check clean-consumer coverage docs format format-check fuzz \
+api:
+	./.golib/scripts/check-api-baseline.sh .
+
+.PHONY: analyzers api benchmark check clean-consumer coverage docs format format-check fuzz \
 	integration mutation opensearch-integration postgres-failover-integration race \
 	redis-integration soak test tidy-check vet
 
