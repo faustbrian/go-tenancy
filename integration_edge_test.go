@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 )
 
 func TestPropagationDefensiveInputsAndCustomField(t *testing.T) {
@@ -76,6 +76,23 @@ func TestIntegrationDefensivePaths(t *testing.T) {
 	}
 	if _, err := integration.Key(nil, scope, "key"); !errors.Is(err, tenancy.ErrInvalidNamespaceInput) {
 		t.Fatalf("Key(nil encoder) error = %v", err)
+	}
+}
+
+func TestIntegrationKeyRejectsOversizedInputBeforeAllocation(t *testing.T) {
+	integration, _ := tenancy.NewIntegration(tenancy.BoundaryQueue, tenancy.PropagationOptions{})
+	encoder, _ := tenancy.NewNamespaceEncoder(make([]byte, 32))
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	logicalKey := strings.Repeat("x", 1<<20)
+	var resultErr error
+	allocations := testing.AllocsPerRun(10, func() {
+		_, resultErr = integration.Key(encoder, scope, logicalKey)
+	})
+	if !errors.Is(resultErr, tenancy.ErrInvalidNamespaceInput) {
+		t.Fatalf("Key(oversized) error = %v", resultErr)
+	}
+	if allocations != 0 {
+		t.Fatalf("Key(oversized) allocations = %f, want 0", allocations)
 	}
 }
 

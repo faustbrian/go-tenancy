@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/faustbrian/go-tenancy"
-	tenantjsonrpc "github.com/faustbrian/go-tenancy/jsonrpc"
+	"github.com/faustbrian/go-tenancy/v2"
+	tenantjsonrpc "github.com/faustbrian/go-tenancy/v2/jsonrpc"
 )
 
 func TestJSONRPCExtractAndAcceptRequireExplicitTrust(t *testing.T) {
@@ -89,6 +89,23 @@ func TestJSONRPCInjectionPreservesMetadataAndRefusesOverwrite(t *testing.T) {
 	}
 	if _, err := codec.Inject(encoded, scope); !errors.Is(err, tenancy.ErrTenantMetadataOverwrite) {
 		t.Fatalf("Inject(overwrite) error = %v", err)
+	}
+}
+
+func TestJSONRPCInjectionRejectsOutputBeyondConfiguredBound(t *testing.T) {
+	t.Parallel()
+
+	metadata := []byte(`{"trace":"safe"}`)
+	codec, err := tenantjsonrpc.New(tenantjsonrpc.Options{
+		MaxMetadataBytes: len(metadata),
+		Trust:            func(context.Context) bool { return true },
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	if _, err := codec.Inject(metadata, scope); !errors.Is(err, tenantjsonrpc.ErrOversizedMetadata) {
+		t.Fatalf("Inject(output beyond maximum) error = %v", err)
 	}
 }
 

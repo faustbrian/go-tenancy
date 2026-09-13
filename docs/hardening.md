@@ -2,10 +2,11 @@
 
 The executable suite covers identity normalization and hostile bytes; scope
 construction and conflicts; cancellation and deadlines; HTTP and JSON-RPC
-duplicates, spoofing, and size limits; every integration domain; namespace
-separation; bounded asynchronous close and shutdown; administrative resume and
-partial failure; PostgreSQL pool reuse, rollback, readback, reset failure, and
-RLS plans; randomized multi-tenant models; races; and fuzz targets.
+duplicates, spoofing, and input and encoded-output size limits; every
+integration domain; pre-allocation namespace bounds; namespace separation;
+bounded asynchronous close and shutdown; administrative resume and partial
+failure; PostgreSQL pool reuse, rollback, readback, reset failure, and RLS
+plans; randomized multi-tenant models; races; and fuzz targets.
 
 Integration-domain evidence covers the owned `Integration` contract and its
 state model. The clean-consumer gate additionally composes application-owned

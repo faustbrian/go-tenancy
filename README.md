@@ -15,6 +15,12 @@ validated tenant identity and makes tenant-bound, system-wide, and deliberately
 unscoped work distinct in Go APIs. It does not authenticate callers, decide
 membership, or authorize access.
 
+The released module remains v1. A planned v2 uses the
+`github.com/faustbrian/go-tenancy/v2` module path and makes JSON-RPC injection
+fail closed when encoded output would exceed the configured metadata limit.
+External consumers must remain on v1 until a v2 tag is published; local-only
+module replacements are not a supported migration path.
+
 ## Core model
 
 Tenant IDs are case-sensitive opaque ASCII values. They are preserved exactly,

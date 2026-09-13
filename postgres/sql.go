@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 )
 
 const (

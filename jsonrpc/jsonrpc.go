@@ -10,7 +10,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 )
 
 const (
@@ -33,7 +33,8 @@ var (
 
 // Options configure immutable JSON-RPC extraction policy.
 type Options struct {
-	Field            string
+	Field string
+	// MaxMetadataBytes bounds both accepted and injected encoded metadata.
 	MaxMetadataBytes int
 	Trust            func(context.Context) bool
 }
@@ -95,8 +96,9 @@ func (codec *Codec) Accept(ctx context.Context, metadata []byte) (context.Contex
 	return tenancy.WithScope(ctx, scope)
 }
 
-// Inject returns a new metadata object containing tenant scope. Existing tenant
-// fields and exceptional scopes are rejected.
+// Inject returns a bounded new metadata object containing tenant scope.
+// Existing tenant fields, exceptional scopes, and encoded output beyond
+// MaxMetadataBytes are rejected.
 func (codec *Codec) Inject(metadata []byte, scope tenancy.Scope) ([]byte, error) {
 	if codec == nil || codec.propagation == nil {
 		return nil, ErrInvalidOptions
@@ -115,6 +117,9 @@ func (codec *Codec) Inject(metadata []byte, scope tenancy.Scope) ([]byte, error)
 	encodedTenant, _ := json.Marshal(carrier.Values(codec.field)[0])
 	object[codec.field] = encodedTenant
 	encoded, _ := json.Marshal(object)
+	if len(encoded) > codec.maximum {
+		return nil, ErrOversizedMetadata
+	}
 	return encoded, nil
 }
 

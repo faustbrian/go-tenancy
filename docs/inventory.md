@@ -16,7 +16,7 @@ seams or one of the declared executable consumer fixtures.
 | `SystemCapability` | Explicit construction token recording system intent; it grants no authorization. |
 | `Carrier` and `MapCarrier` | Bounded multi-value wire representation used before trust-gated extraction. |
 | HTTP header | Configurable field, default `X-Tenant-ID`; values remain untrusted until the immediate-peer callback accepts the request. |
-| JSON-RPC metadata | Bounded raw JSON object; duplicate keys are detected before map decoding. |
+| JSON-RPC metadata | Bounded raw JSON object; duplicate keys are detected before map decoding, and injected encoded output is subject to the same configured byte ceiling. |
 | PostgreSQL predicate argument | Raw tenant value owned by `QueryPredicate.Arguments` for an explicit equality predicate. |
 | PostgreSQL transaction setting | Transaction-local raw tenant value in `app.tenant_id` or the configured setting; read back before work and after the callback. |
 | Opaque namespace | `tn2_` plus lowercase hexadecimal HMAC-SHA-256 over version, scope, tenant, domain, boundary, and logical key. |
@@ -41,8 +41,9 @@ path replaces a deadline or cancellation chain with `context.Background`.
 ## Namespace and integration encoders
 
 `NamespaceEncoder.Encode` is the only owned opaque namespace primitive.
-`Integration.Key` adds a length-delimited semantic boundary and accepts tenant
-scope only. The integration inventory is queue, outbox, Kafka, CloudEvents,
+`Integration.Key` adds a length-delimited semantic boundary, accepts tenant
+scope only, and rejects oversized logical keys before allocating the composed
+namespace input. The integration inventory is queue, outbox, Kafka, CloudEvents,
 audit, correlation, idempotency, cache, rate limit, search, scheduler,
 workflow, event sourcing, and telemetry. The namespace-domain inventory is
 cache, idempotency, rate limit, search, queue, scheduler, event, workflow, and

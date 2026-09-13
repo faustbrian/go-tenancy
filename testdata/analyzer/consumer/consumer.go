@@ -8,8 +8,8 @@ import (
 	cachememory "github.com/faustbrian/go-cache/backend/memory"
 	"github.com/faustbrian/go-queue"
 	telemetryotlp "github.com/faustbrian/go-telemetry/otlp"
-	"github.com/faustbrian/go-tenancy"
-	"github.com/faustbrian/go-tenancy/testdata/analyzer/metrics"
+	"github.com/faustbrian/go-tenancy/v2"
+	"github.com/faustbrian/go-tenancy/v2/testdata/analyzer/metrics"
 	workflowpostgres "github.com/faustbrian/go-workflow/postgres"
 )
 

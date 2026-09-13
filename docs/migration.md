@@ -1,5 +1,20 @@
 # Migration guide
 
+## From v1 to v2
+
+After a v2 release is published, change the module and every package import
+from `github.com/faustbrian/go-tenancy` to
+`github.com/faustbrian/go-tenancy/v2`. Version 2 intentionally changes
+`jsonrpc.Codec.Inject`: injection now returns `ErrOversizedMetadata` when the
+encoded result would exceed `MaxMetadataBytes`, including growth caused by JSON
+re-encoding. Callers that add tenant metadata near their envelope limit must
+reserve space for the encoded tenant field or increase the configured limit
+within `MaximumMetadataBytes`.
+
+Until that release exists, external consumers must remain on v1. Do not use a
+local-only `replace` to claim v2 consumer compatibility; publication of the v2
+module is the release blocker for clean-consumer and reverse-dependency proof.
+
 ## Background group lifecycle naming
 
 Use `Group.Drain(ctx)` to stop new submissions and wait for accepted work before

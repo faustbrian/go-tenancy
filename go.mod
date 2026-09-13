@@ -1,4 +1,4 @@
-module github.com/faustbrian/go-tenancy
+module github.com/faustbrian/go-tenancy/v2
 
 go 1.27.0
 
