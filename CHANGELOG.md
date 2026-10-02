@@ -5,6 +5,14 @@ versioning once released.
 
 ## Unreleased
 
+### Maintenance
+
+- Update pgx from v5.10.0 to v5.11.0, raising the selected driver floor for
+  consumer module graphs. The driver changes DSN parsing/default resolution
+  and Go 1.27 database/sql scanning. Review caller-owned DSN escaping and
+  timestamp location settings; custom `pgx.Rows` implementations must
+  provide `TypeMap`. The tenancy database/sql API remains unchanged.
+
 ## 1.1.0 - 2026-09-05
 
 ### Added
