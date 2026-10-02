@@ -5,6 +5,8 @@ versioning once released.
 
 ## Unreleased
 
+## 1.1.2 - 2026-10-02
+
 ### Maintenance
 
 - Update pgx from v5.10.0 to v5.11.0, raising the selected driver floor for
