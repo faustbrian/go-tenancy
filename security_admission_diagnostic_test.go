@@ -41,6 +41,41 @@ func TestSecurityAdmissionBeforeNamespaceInputCopy(t *testing.T) {
 	}
 }
 
+func TestSecurityAdmissionComposedNamespaceLimit(t *testing.T) {
+	if os.Getenv("GITHUB_ACTIONS") != "true" {
+		t.Skip("namespace resource characterization runs only in hosted CI")
+	}
+	integration, err := tenancy.NewIntegration(tenancy.BoundaryQueue, tenancy.PropagationOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoder, err := tenancy.NewNamespaceEncoder(make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scope, err := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Queue framing occupies two four-byte lengths and five boundary bytes.
+	const maximumLogicalKeyBytes = 4096 - 8 - 5
+	key, err := integration.Key(encoder, scope, strings.Repeat("x", maximumLogicalKeyBytes))
+	if err != nil || len(key) != 68 || !strings.HasPrefix(key, "tn2_") {
+		t.Fatal("maximum composed namespace input was not admitted")
+	}
+	logicalKey := strings.Repeat("x", maximumLogicalKeyBytes+1)
+	var resultErr error
+	allocations := testing.AllocsPerRun(10, func() {
+		key, resultErr = integration.Key(encoder, scope, logicalKey)
+	})
+	if key != "" || !errors.Is(resultErr, tenancy.ErrInvalidNamespaceInput) {
+		t.Fatal("oversized composed namespace input did not refuse without output")
+	}
+	if allocations != 0 {
+		t.Fatalf("rejected composed namespace input allocated: got %f want zero", allocations)
+	}
+}
+
 func TestSecurityAdmissionJSONRPCOutput(t *testing.T) {
 	if os.Getenv("GITHUB_ACTIONS") != "true" {
 		t.Skip("native codec characterization runs only in hosted CI")
