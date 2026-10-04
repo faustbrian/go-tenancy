@@ -14,7 +14,8 @@ versioning once released.
 - Reject JSON-RPC injection when re-encoding would exceed the codec's configured
   metadata byte limit.
 - Reject oversized integration logical keys before constructing their
-  length-delimited namespace input.
+  length-delimited namespace input, including the boundary and its length
+  prefixes in the 4,096-byte allowance.
 
 ## 1.1.2 - 2026-10-02
 

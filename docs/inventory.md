@@ -43,7 +43,9 @@ path replaces a deadline or cancellation chain with `context.Background`.
 `NamespaceEncoder.Encode` is the only owned opaque namespace primitive.
 `Integration.Key` adds a length-delimited semantic boundary, accepts tenant
 scope only, and rejects oversized logical keys before allocating the composed
-namespace input. The integration inventory is queue, outbox, Kafka, CloudEvents,
+namespace input. The 4,096-byte allowance includes eight length-prefix bytes and
+the boundary name; queue logical keys therefore admit at most 4,083 bytes.
+The integration inventory is queue, outbox, Kafka, CloudEvents,
 audit, correlation, idempotency, cache, rate limit, search, scheduler,
 workflow, event sourcing, and telemetry. The namespace-domain inventory is
 cache, idempotency, rate limit, search, queue, scheduler, event, workflow, and

@@ -45,10 +45,6 @@ func TestSecurityAdmissionComposedNamespaceLimit(t *testing.T) {
 	if os.Getenv("GITHUB_ACTIONS") != "true" {
 		t.Skip("namespace resource characterization runs only in hosted CI")
 	}
-	integration, err := tenancy.NewIntegration(tenancy.BoundaryQueue, tenancy.PropagationOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	encoder, err := tenancy.NewNamespaceEncoder(make([]byte, 32))
 	if err != nil {
 		t.Fatal(err)
@@ -57,22 +53,37 @@ func TestSecurityAdmissionComposedNamespaceLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Queue framing occupies two four-byte lengths and five boundary bytes.
-	const maximumLogicalKeyBytes = 4096 - 8 - 5
-	key, err := integration.Key(encoder, scope, strings.Repeat("x", maximumLogicalKeyBytes))
-	if err != nil || len(key) != 68 || !strings.HasPrefix(key, "tn2_") {
-		t.Fatal("maximum composed namespace input was not admitted")
+	boundaries := []tenancy.Boundary{
+		tenancy.BoundaryQueue, tenancy.BoundaryOutbox, tenancy.BoundaryKafka,
+		tenancy.BoundaryCloudEvents, tenancy.BoundaryAudit, tenancy.BoundaryCorrelation,
+		tenancy.BoundaryIdempotency, tenancy.BoundaryCache, tenancy.BoundaryRateLimit,
+		tenancy.BoundarySearch, tenancy.BoundaryScheduler, tenancy.BoundaryWorkflow,
+		tenancy.BoundaryEventSourcing, tenancy.BoundaryTelemetry,
 	}
-	logicalKey := strings.Repeat("x", maximumLogicalKeyBytes+1)
-	var resultErr error
-	allocations := testing.AllocsPerRun(10, func() {
-		key, resultErr = integration.Key(encoder, scope, logicalKey)
-	})
-	if key != "" || !errors.Is(resultErr, tenancy.ErrInvalidNamespaceInput) {
-		t.Fatal("oversized composed namespace input did not refuse without output")
-	}
-	if allocations != 0 {
-		t.Fatalf("rejected composed namespace input allocated: got %f want zero", allocations)
+	for _, boundary := range boundaries {
+		t.Run(string(boundary), func(t *testing.T) {
+			integration, err := tenancy.NewIntegration(boundary, tenancy.PropagationOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Each field has a four-byte length prefix within the 4096-byte input.
+			maximumLogicalKeyBytes := 4096 - 8 - len(string(boundary))
+			key, err := integration.Key(encoder, scope, strings.Repeat("x", maximumLogicalKeyBytes))
+			if err != nil || len(key) != 68 || !strings.HasPrefix(key, "tn2_") {
+				t.Fatal("maximum composed namespace input was not admitted")
+			}
+			logicalKey := strings.Repeat("x", maximumLogicalKeyBytes+1)
+			var resultErr error
+			allocations := testing.AllocsPerRun(10, func() {
+				key, resultErr = integration.Key(encoder, scope, logicalKey)
+			})
+			if key != "" || !errors.Is(resultErr, tenancy.ErrInvalidNamespaceInput) {
+				t.Fatal("oversized composed namespace input did not refuse without output")
+			}
+			if allocations != 0 {
+				t.Fatalf("rejected composed namespace input allocated: got %f want zero", allocations)
+			}
+		})
 	}
 }
 
