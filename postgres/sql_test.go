@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/faustbrian/go-tenancy"
-	tenancypostgres "github.com/faustbrian/go-tenancy/postgres"
+	"github.com/faustbrian/go-tenancy/v2"
+	tenancypostgres "github.com/faustbrian/go-tenancy/v2/postgres"
 )
 
 func TestPredicateRequiresTenantScopeAndQuotesOwnedIdentifier(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 )
 
 func TestIntegrationContractsPropagateAndSeparateEveryBoundary(t *testing.T) {

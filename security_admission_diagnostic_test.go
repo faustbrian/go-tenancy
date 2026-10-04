@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/faustbrian/go-tenancy"
-	tenantjsonrpc "github.com/faustbrian/go-tenancy/jsonrpc"
+	"github.com/faustbrian/go-tenancy/v2"
+	tenantjsonrpc "github.com/faustbrian/go-tenancy/v2/jsonrpc"
 )
 
 func TestSecurityAdmissionBeforeNamespaceInputCopy(t *testing.T) {
@@ -60,5 +60,37 @@ func TestSecurityAdmissionJSONRPCOutput(t *testing.T) {
 	encoded, err := codec.Inject(metadata, scope)
 	if encoded != nil || !errors.Is(err, tenantjsonrpc.ErrOversizedMetadata) {
 		t.Fatal("encoded metadata exceeding the configured allowance was not refused without output")
+	}
+}
+
+func TestSecurityAdmissionJSONRPCInclusiveOutput(t *testing.T) {
+	if os.Getenv("GITHUB_ACTIONS") != "true" {
+		t.Skip("native codec characterization runs only in hosted CI")
+	}
+	const expected = `{"tenant_id":"tenant-a"}`
+	scope, err := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, allowance := range []int{len(expected) - 1, len(expected)} {
+		codec, err := tenantjsonrpc.New(tenantjsonrpc.Options{
+			MaxMetadataBytes: allowance,
+			Trust:            func(context.Context) bool { return true },
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		metadata := []byte(`{}`)
+		encoded, err := codec.Inject(metadata, scope)
+		if allowance < len(expected) {
+			if encoded != nil || !errors.Is(err, tenantjsonrpc.ErrOversizedMetadata) {
+				t.Fatal("one-byte-short output allowance was not refused without output")
+			}
+		} else if err != nil || string(encoded) != expected {
+			t.Fatal("inclusive output allowance did not preserve the encoded tenant field")
+		}
+		if string(metadata) != `{}` {
+			t.Fatal("injection mutated caller-owned metadata")
+		}
 	}
 }

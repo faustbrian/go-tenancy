@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 )
 
 func TestPropertyTenantNamespacesNeverAlias(t *testing.T) {

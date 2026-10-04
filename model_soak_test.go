@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 )
 
 func TestIntegrationStateModelRejectsCrossTenantReplayAndRetry(t *testing.T) {

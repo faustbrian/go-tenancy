@@ -5,6 +5,17 @@ versioning once released.
 
 ## Unreleased
 
+### Changed
+
+- Prepare the intentional JSON-RPC injection contract change under the planned
+  `github.com/faustbrian/go-tenancy/v2` module path. Consumers must update root
+  and subpackage imports only after v2 is published; v1 retains its existing
+  behavior.
+- Reject JSON-RPC injection when re-encoding would exceed the codec's configured
+  metadata byte limit.
+- Reject oversized integration logical keys before constructing their
+  length-delimited namespace input.
+
 ## 1.1.2 - 2026-10-02
 
 ### Maintenance

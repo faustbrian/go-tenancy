@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/faustbrian/go-tenancy"
-	tenancyjsonrpc "github.com/faustbrian/go-tenancy/jsonrpc"
+	"github.com/faustbrian/go-tenancy/v2"
+	tenancyjsonrpc "github.com/faustbrian/go-tenancy/v2/jsonrpc"
 )
 
 func FuzzJSONRPCMetadata(f *testing.F) {

@@ -1,9 +1,14 @@
 # Security policy
 
+The planned v2 source is governed by the versioned
+[threat model](docs/security/threat-model-v2.md), including explicit
+application-owned risks and review conditions.
+
 ## Supported versions
 
-Pin an exact tenancy module version and review every upgrade.
-v1, only versions explicitly listed in repository release notes are supported.
+Pin an exact tenancy module version and review every upgrade. For v1, only
+versions explicitly listed in repository release notes are supported. The v2
+source tree is not externally consumable until a v2 tag is published.
 
 ## Reporting
 

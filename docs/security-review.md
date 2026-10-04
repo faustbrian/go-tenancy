@@ -1,12 +1,14 @@
 # Security review and isolation matrix
 
-Review date: 2026-08-10
+Review date: 2026-09-13
 
 ## Security conclusions
 
 - Tenant identity is routing data, never authentication or authorization.
 - Missing, untrusted, repeated, conflicting, malformed, oversized, and
   pre-scoped transport identity fails closed at the owned propagation seams.
+- JSON-RPC injection applies the configured metadata byte ceiling to encoded
+  output as well as input, including any growth caused by re-encoding.
 - Tenant identity, metadata, administrative reasons, capabilities, and scopes
   redact ordinary, Go-syntax, and structured `log/slog` diagnostics. Explicit
   serialization and value access remain trusted-boundary operations.
@@ -33,7 +35,9 @@ Review date: 2026-08-10
 | Generic propagation spoof, ambiguity, overwrite, and replay | `TestPropagationCodecRejectsAmbiguousSpoofedAndMalformedMetadata`, `TestPropagationCodecRefusesOverwriteSystemScopeAndContextConflict`, `FuzzPropagationExtraction` |
 | HTTP direct access and duplicate headers | `TestMiddlewareAcceptsOnlyExplicitlyTrustedTenantHeader`, `TestHTTPExtractionRejectsDuplicateCaseVariants`, `FuzzHTTPHeaderExtraction`, clean-consumer authenticated-hop fixture |
 | JSON-RPC direct access and duplicate raw keys | `TestJSONRPCExtractAndAcceptRequireExplicitTrust`, `TestJSONRPCRejectsDuplicateConflictingMalformedAndOversizedMetadata`, `FuzzJSONRPCMetadata` |
+| JSON-RPC injected-output expansion | `TestJSONRPCInjectionRejectsOutputBeyondConfiguredBound` |
 | Queue, event, cache, search, workflow, audit, and telemetry contract replay and retry | `TestIntegrationStateModelRejectsCrossTenantReplayAndRetry`, `TestPropertyEveryIntegrationFailsClosedAcrossRandomizedSequences`, external clean-consumer provider compositions |
+| Oversized integration namespace inputs | `TestIntegrationKeyRejectsOversizedInputBeforeAllocation` |
 | Live queue retry and dead-letter persistence | `scripts/test-redis-integration.sh` executes Redis Streams reclaim, retry, dead-letter inspection, missing scope, conflicting scope, and cross-tenant queue isolation under `-race` |
 | Cache and namespace cross-tenant collisions | `TestNamespaceEncoderSeparatesScopesDomainsAndAmbiguousParts`, `TestNamespaceOutputIsSafeForFirstPartyProviderNames`, `TestPropertyTenantNamespacesNeverAlias`, `TestPropertyConcurrentOperationsCannotObserveAnotherTenant` |
 | Live search persistence | `scripts/test-opensearch-integration.sh` executes two-tenant negative isolation against OpenSearch 2.19.6 and 3.8.0 under `-race` |
