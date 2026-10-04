@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/faustbrian/go-tenancy"
-	tenanthttp "github.com/faustbrian/go-tenancy/http"
+	"github.com/faustbrian/go-tenancy/v2"
+	tenanthttp "github.com/faustbrian/go-tenancy/v2/http"
 )
 
 func TestMiddlewareUsesOwnedErrorHandlerAndRejectsInvalidHandler(t *testing.T) {

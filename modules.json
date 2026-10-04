@@ -5,14 +5,14 @@
   "modules": [
     {
       "directory": ".",
-      "module_path": "github.com/faustbrian/go-tenancy",
+      "module_path": "github.com/faustbrian/go-tenancy/v2",
       "go_version": "1.27.0",
       "packages": [
         {
           "module_directory": ".",
           "directory": ".",
           "name": "tenancy",
-          "import_path": "github.com/faustbrian/go-tenancy",
+          "import_path": "github.com/faustbrian/go-tenancy/v2",
           "kind": "public",
           "production": true,
           "executable": true,
@@ -24,7 +24,7 @@
           "module_directory": ".",
           "directory": "http",
           "name": "tenancyhttp",
-          "import_path": "github.com/faustbrian/go-tenancy/http",
+          "import_path": "github.com/faustbrian/go-tenancy/v2/http",
           "kind": "public",
           "production": true,
           "executable": true,
@@ -36,7 +36,7 @@
           "module_directory": ".",
           "directory": "jsonrpc",
           "name": "tenancyjsonrpc",
-          "import_path": "github.com/faustbrian/go-tenancy/jsonrpc",
+          "import_path": "github.com/faustbrian/go-tenancy/v2/jsonrpc",
           "kind": "public",
           "production": true,
           "executable": true,
@@ -48,7 +48,7 @@
           "module_directory": ".",
           "directory": "postgres",
           "name": "tenancypostgres",
-          "import_path": "github.com/faustbrian/go-tenancy/postgres",
+          "import_path": "github.com/faustbrian/go-tenancy/v2/postgres",
           "kind": "public",
           "production": true,
           "executable": true,
@@ -60,7 +60,7 @@
           "module_directory": ".",
           "directory": "tenancytest",
           "name": "tenancytest",
-          "import_path": "github.com/faustbrian/go-tenancy/tenancytest",
+          "import_path": "github.com/faustbrian/go-tenancy/v2/tenancytest",
           "kind": "test support",
           "production": false,
           "executable": true,
@@ -70,9 +70,9 @@
         }
       ],
       "purpose": "`tenancy` is a small explicit foundation for tenant isolation. It transports validated tenant identity and makes tenant-bound, system-wide, and deliberately unscoped work distinct in Go APIs. It does not authenticate callers, decide membership, or authorize access.",
-      "lifecycle": "stable",
+      "lifecycle": "planned",
       "kind": "public library",
-      "releasable": true,
+      "releasable": false,
       "family": "foundations",
       "family_label": "Foundations",
       "family_description": "Common immutable values, deterministic seams, configuration, identity propagation, and input validation.",
@@ -90,17 +90,17 @@
         ],
         "public_package_identifier": "tenancy",
         "primary_entry_packages": [
-          "github.com/faustbrian/go-tenancy"
+          "github.com/faustbrian/go-tenancy/v2"
         ],
         "package_selection": {
-          "github.com/faustbrian/go-tenancy": "Use for validated tenant identity, explicit scope, propagation, opaque provider namespaces, bounded background work, and administration seams.",
-          "github.com/faustbrian/go-tenancy/http": "Use at authenticated HTTP boundaries for trust-gated tenant extraction, acceptance, injection, and middleware.",
-          "github.com/faustbrian/go-tenancy/jsonrpc": "Use at authenticated JSON-RPC boundaries for bounded, duplicate-safe tenant metadata propagation.",
-          "github.com/faustbrian/go-tenancy/postgres": "Use for explicit tenant predicates, PostgreSQL row-level-security plans, and transaction-local tenant enforcement.",
-          "github.com/faustbrian/go-tenancy/tenancytest": "Use in tests for deterministic tenant and system scopes and tenant assertions."
+          "github.com/faustbrian/go-tenancy/v2": "Use for validated tenant identity, explicit scope, propagation, opaque provider namespaces, bounded background work, and administration seams.",
+          "github.com/faustbrian/go-tenancy/v2/http": "Use at authenticated HTTP boundaries for trust-gated tenant extraction, acceptance, injection, and middleware.",
+          "github.com/faustbrian/go-tenancy/v2/jsonrpc": "Use at authenticated JSON-RPC boundaries for bounded, duplicate-safe tenant metadata propagation.",
+          "github.com/faustbrian/go-tenancy/v2/postgres": "Use for explicit tenant predicates, PostgreSQL row-level-security plans, and transaction-local tenant enforcement.",
+          "github.com/faustbrian/go-tenancy/v2/tenancytest": "Use in tests for deterministic tenant and system scopes and tenant assertions."
         },
-        "lifecycle_status": "active",
-        "maturity": "stable",
+        "lifecycle_status": "planned",
+        "maturity": "preview",
         "construction_styles": [
           "must-helper",
           "new-config",
@@ -125,12 +125,12 @@
         },
         "optional_owned_dependencies": [],
         "adapters": [
-          "github.com/faustbrian/go-tenancy/http",
-          "github.com/faustbrian/go-tenancy/jsonrpc",
-          "github.com/faustbrian/go-tenancy/postgres"
+          "github.com/faustbrian/go-tenancy/v2/http",
+          "github.com/faustbrian/go-tenancy/v2/jsonrpc",
+          "github.com/faustbrian/go-tenancy/v2/postgres"
         ],
         "companions": [
-          "github.com/faustbrian/go-tenancy/tenancytest"
+          "github.com/faustbrian/go-tenancy/v2/tenancytest"
         ],
         "supported_go": {
           "minimum": "1.27.0",
@@ -165,10 +165,10 @@
         "delivery": {
           "implementation": "in-progress",
           "hardening": "in-progress",
-          "release": "in-progress"
+          "release": "blocked"
         }
       },
-      "version": "1.1.2",
+      "version": "2.0.0",
       "tag_prefix": "v",
       "owned_dependencies": [],
       "reverse_owned_dependencies": [

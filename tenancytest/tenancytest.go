@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 )
 
 // Tenant constructs a tenant scope or stops the calling test.

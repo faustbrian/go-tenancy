@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "repository": "github.com/faustbrian/go-tenancy",
+  "module": ".",
+  "package": "postgres",
+  "gate": "mutation",
+  "input_digest": "sha256:75ad1f456a0dae2e347a7949368238a08d7346ddccf4b6fe7a308eb775b24daa",
+  "verifier_digest": "sha256:9a9499ff68a8dfd49a0be7995590297a8ee563a1aa226bfd8b9361dc53058108",
+  "result": "passed",
+  "report_digest": "sha256:e3151787fe879067f39fe8d990df6d5b3b4fd0399b120c9332033fcdce3e57f3",
+  "environment": {
+    "CGO_ENABLED": "1",
+    "GOARCH": "arm64",
+    "GOOS": "darwin",
+    "GOVERSION": "go1.27.1",
+    "gremlins_binary_sha256": "sha256:3500ba5216454cd0e74be81da7b927251d831230ee89858c90d2028c1ade7694"
+  },
+  "completed_at": "2026-09-13T12:06:34.830925Z"
+}

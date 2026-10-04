@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/goleak"
 
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 )
 
 func TestGroupStressCloseAndShutdownDoNotLeak(t *testing.T) {

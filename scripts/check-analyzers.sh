@@ -22,15 +22,15 @@ find "${module_directory}" -maxdepth 1 -type f -name '*.go' \
     ! -name '*_test.go' -exec cp '{}' "${fixture}" ';'
 for package in adapter consumer metrics; do
     mkdir -p "${fixture}/analyzerfixture/${package}"
-    sed 's|github.com/faustbrian/go-tenancy/testdata/analyzer|github.com/faustbrian/go-tenancy/analyzerfixture|g' \
+    sed 's|github.com/faustbrian/go-tenancy/v2/testdata/analyzer|github.com/faustbrian/go-tenancy/v2/analyzerfixture|g' \
         "${module_directory}/testdata/analyzer/${package}/${package}.go" \
         >"${fixture}/analyzerfixture/${package}/${package}.go"
 done
-sed 's|github.com/faustbrian/go-tenancy/testdata/analyzer|github.com/faustbrian/go-tenancy/analyzerfixture|g' \
+sed 's|github.com/faustbrian/go-tenancy/v2/testdata/analyzer|github.com/faustbrian/go-tenancy/v2/analyzerfixture|g' \
     "${module_directory}/analysis.yml" >"${policy}"
 (
     cd "${fixture}"
-    GOWORK=off go mod init github.com/faustbrian/go-tenancy
+    GOWORK=off go mod init github.com/faustbrian/go-tenancy/v2
     GOWORK=off go mod edit \
         -require=github.com/faustbrian/go-audit@v1.0.0 \
         -require=github.com/faustbrian/go-cache@v1.0.0 \

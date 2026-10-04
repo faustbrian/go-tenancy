@@ -92,6 +92,8 @@ func (integration *Integration) Receive(
 }
 
 // Key creates a boundary-separated opaque namespace for scope and logicalKey.
+// Oversized logical keys, including boundary framing, are rejected before
+// namespace input allocation.
 func (integration *Integration) Key(
 	encoder *NamespaceEncoder,
 	scope Scope,
@@ -103,7 +105,9 @@ func (integration *Integration) Key(
 	if !scope.Valid() || scope.Kind() != ScopeTenant {
 		return "", ErrTenantScopeRequired
 	}
-	if logicalKey == "" {
+	// Both fields carry a four-byte length prefix in the encoded input.
+	maximumLogicalKeyBytes := maximumNamespacePart - 8 - len(integration.boundary)
+	if len(logicalKey) == 0 || len(logicalKey) > maximumLogicalKeyBytes {
 		return "", ErrInvalidNamespaceInput
 	}
 	return encoder.Encode(
