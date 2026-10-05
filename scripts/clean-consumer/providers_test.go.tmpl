@@ -19,7 +19,7 @@ import (
 	"github.com/faustbrian/go-search"
 	"github.com/faustbrian/go-search/searchtest"
 	telemetrymetric "github.com/faustbrian/go-telemetry/metric"
-	"github.com/faustbrian/go-tenancy"
+	"github.com/faustbrian/go-tenancy/v2"
 	"github.com/faustbrian/go-workflow"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -184,6 +184,47 @@ func TestQueueReplayWorkflowRetryAndAuditAttributionRejectTenantChanges(t *testi
 	if err != nil || len(page.Records) != 1 || page.Records[0].Actor().ID() != "support-7" {
 		t.Fatalf("tenant audit page = %#v, %v", page.Records, err)
 	}
+}
+
+func TestQueueStringEnvelopeAdmissionUsesV2Scope(t *testing.T) {
+	// The retained v1 CloudEvents adapter transports a string envelope; v2
+	// tenancy owns the receiving application's scoped admission decision.
+	message := job.Message{Timeout: time.Minute, Body: []byte(`{"order":42}`), Metadata: &job.Metadata{OriginalID: "job-42", JobType: "order.process", ContentType: "application/json", TenantID: "tenant-a"}}
+	event, retained, _, err := golibevents.QueueToCloudEvent(message, golibevents.QueueOptions{Source: "urn:orders"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, _, err := golibevents.CloudEventToQueue(event, retained)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := acceptQueueTenant(tenantContext(t, "tenant-a"), restored); err != nil {
+		t.Fatalf("matching queue admission error = %v", err)
+	}
+	if err := acceptQueueTenant(context.Background(), restored); !errors.Is(err, tenancy.ErrTenantScopeRequired) {
+		t.Fatalf("unscoped queue admission error = %v", err)
+	}
+	if err := acceptQueueTenant(tenantContext(t, "tenant-b"), restored); !errors.Is(err, tenancy.ErrConflictingScope) {
+		t.Fatalf("cross-tenant queue admission error = %v", err)
+	}
+}
+
+func acceptQueueTenant(ctx context.Context, message job.Message) error {
+	expected, err := tenancy.RequireTenant(ctx)
+	if err != nil {
+		return err
+	}
+	if message.Metadata == nil || message.Metadata.TenantID == "" {
+		return tenancy.ErrTenantScopeRequired
+	}
+	actual, err := tenancy.ParseTenantID(message.Metadata.TenantID)
+	if err != nil {
+		return err
+	}
+	if !actual.Equal(expected) {
+		return tenancy.ErrConflictingScope
+	}
+	return nil
 }
 
 func TestTelemetryDropsTenantIdentityAndBoundsCardinality(t *testing.T) {

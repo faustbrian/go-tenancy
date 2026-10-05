@@ -2,15 +2,16 @@ package consumer_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/faustbrian/go-tenancy"
-	tenancyhttp "github.com/faustbrian/go-tenancy/http"
-	tenancyjsonrpc "github.com/faustbrian/go-tenancy/jsonrpc"
-	tenancypostgres "github.com/faustbrian/go-tenancy/postgres"
+	"github.com/faustbrian/go-tenancy/v2"
+	tenancyhttp "github.com/faustbrian/go-tenancy/v2/http"
+	tenancyjsonrpc "github.com/faustbrian/go-tenancy/v2/jsonrpc"
+	tenancypostgres "github.com/faustbrian/go-tenancy/v2/postgres"
 )
 
 func TestAuthenticatedHopAndPersistenceCompositionFailsClosed(t *testing.T) {
@@ -76,5 +77,40 @@ func TestWireAndNamespaceMigrationCompositionRejectsAmbiguity(t *testing.T) {
 	cache := map[string]string{keyA: "tenant-a-order"}
 	if _, found := cache[keyB]; found {
 		t.Fatal("scoped miss fell back to another tenant or a legacy key")
+	}
+}
+
+func TestJSONRPCInjectionBoundsEncodedPublicConsumerOutput(t *testing.T) {
+	scope, err := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata := []byte(`{"trace":"safe"}`)
+	maximum := len(`{"tenant_id":"tenant-a","trace":"safe"}`)
+	codec, err := tenancyjsonrpc.New(tenancyjsonrpc.Options{
+		MaxMetadataBytes: maximum, Trust: func(context.Context) bool { return true },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := codec.Inject(metadata, scope)
+	if err != nil || len(encoded) != maximum {
+		t.Fatalf("exact-bound injection length = %d, error = %v", len(encoded), err)
+	}
+	var values map[string]string
+	if err := json.Unmarshal(encoded, &values); err != nil {
+		t.Fatal(err)
+	}
+	if values["trace"] != "safe" || values["tenant_id"] != "tenant-a" || len(values) != 2 {
+		t.Fatal("injection did not preserve metadata and add the selected tenant")
+	}
+	limited, err := tenancyjsonrpc.New(tenancyjsonrpc.Options{
+		MaxMetadataBytes: maximum - 1, Trust: func(context.Context) bool { return true },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if encoded, err := limited.Inject(metadata, scope); !errors.Is(err, tenancyjsonrpc.ErrOversizedMetadata) || encoded != nil {
+		t.Fatalf("over-budget injection length = %d, error = %v", len(encoded), err)
 	}
 }
