@@ -93,6 +93,7 @@ type namespaceWriter interface {
 
 func writeNamespacePart(writer namespaceWriter, value string) {
 	var size [4]byte
+	// #nosec G115 -- Encode admits only tenant IDs <=128 and parts <=4096 bytes.
 	binary.BigEndian.PutUint32(size[:], uint32(len(value)))
 	_, _ = writer.Write(size[:])
 	_, _ = writer.Write([]byte(value))

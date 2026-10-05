@@ -164,6 +164,7 @@ func integrationKey(boundary Boundary, logicalKey string) string {
 
 func appendLengthPrefixed(target []byte, value string) []byte {
 	var size [4]byte
+	// #nosec G115 -- Integration.Key bounds each admitted field below 4096 bytes.
 	binary.BigEndian.PutUint32(size[:], uint32(len(value)))
 	target = append(target, size[:]...)
 	return append(target, value...)
