@@ -1,6 +1,6 @@
 # Security policy
 
-The planned v2 source is governed by the versioned
+The v2 source is governed by the versioned
 [threat model](docs/security/threat-model-v2.md), including explicit
 application-owned risks and review conditions.
 

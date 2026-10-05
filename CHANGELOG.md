@@ -7,7 +7,7 @@ versioning once released.
 
 ### Changed
 
-- Prepare the intentional JSON-RPC injection contract change under the planned
+- Prepare the intentional JSON-RPC injection contract change under the v2
   `github.com/faustbrian/go-tenancy/v2` module path. Consumers must update root
   and subpackage imports only after v2 is published; v1 retains its existing
   behavior.

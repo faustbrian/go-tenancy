@@ -11,9 +11,10 @@ re-encoding. Callers that add tenant metadata near their envelope limit must
 reserve space for the encoded tenant field or increase the configured limit
 within `MaximumMetadataBytes`.
 
-Until that release exists, external consumers must remain on v1. Do not use a
-local-only `replace` to claim v2 consumer compatibility; publication of the v2
-module is the release blocker for clean-consumer and reverse-dependency proof.
+Adopt an exact published v2 tag. Until one exists, external consumers must
+remain on a released v1 version. A local-only `replace` does not establish
+public v2 consumer compatibility; clean-consumer and reverse-dependency proof
+must use the published v2 module.
 
 ## Background group lifecycle naming
 
