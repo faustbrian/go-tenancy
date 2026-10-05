@@ -72,7 +72,7 @@
       "purpose": "`tenancy` is a small explicit foundation for tenant isolation. It transports validated tenant identity and makes tenant-bound, system-wide, and deliberately unscoped work distinct in Go APIs. It does not authenticate callers, decide membership, or authorize access.",
       "lifecycle": "planned",
       "kind": "public library",
-      "releasable": false,
+      "releasable": true,
       "family": "foundations",
       "family_label": "Foundations",
       "family_description": "Common immutable values, deterministic seams, configuration, identity propagation, and input validation.",
