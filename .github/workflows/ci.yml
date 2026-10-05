@@ -97,7 +97,7 @@ jobs:
             jq --arg root "${PWD}/" --argjson status "${scanner_status}" '
               {status: $status,
                issue_count: ((.Issues // []) | length),
-               load_error_packages: ((.GolangErrors // {}) | keys | length),
+               load_error_packages: ((.["Golang errors"] // {}) | keys | length),
                omitted: ([((.Issues // []) | length) - 32, 0] | max),
                issues: [(.Issues // [])[:32][] |
                  {rule: (.rule_id | select(test("^G[0-9]{3}$"))),
