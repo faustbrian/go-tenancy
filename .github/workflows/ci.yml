@@ -80,8 +80,35 @@ jobs:
         working-directory: security-tooling
         run: go build -p 1 -trimpath -buildvcs=false -o "${GOTMPDIR}/golib" ./cmd/golib
       - name: Run native security and bounded checks
+        id: native-checks
         working-directory: producer
         run: '"${GOTMPDIR}/golib" check --local --module .'
+      - name: Classify standalone gosec refusal without report contents
+        if: failure() && steps.native-checks.outcome == 'failure'
+        working-directory: producer
+        run: |
+          set -euo pipefail
+          scanner_status=0
+          go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 \
+            -nosec-require-rules -nosec-require-justification \
+            -fmt=json -out="${GOTMPDIR}/gosec.json" ./... \
+            >"${GOTMPDIR}/gosec.log" 2>&1 || scanner_status=$?
+          if [[ -f "${GOTMPDIR}/gosec.json" ]]; then
+            jq --arg root "${PWD}/" --argjson status "${scanner_status}" '
+              {status: $status,
+               issue_count: ((.Issues // []) | length),
+               load_error_packages: ((.GolangErrors // {}) | keys | length),
+               omitted: ([((.Issues // []) | length) - 32, 0] | max),
+               issues: [(.Issues // [])[:32][] |
+                 {rule: (.rule_id | select(test("^G[0-9]{3}$"))),
+                  file: (.file | select(startswith($root)) | ltrimstr($root) |
+                    select(length <= 256 and test("^[A-Za-z0-9_./-]+[.]go$"))),
+                  line: (.line | select(test("^[0-9]+(-[0-9]+)?$")))}]}
+            ' "${GOTMPDIR}/gosec.json"
+          else
+            echo 'Standalone scanner did not produce a structured report'
+          fi
+          exit "${scanner_status}"
       - name: Remove task-owned qualification resources
         if: always()
         env:
