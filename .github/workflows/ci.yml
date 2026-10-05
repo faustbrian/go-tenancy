@@ -69,7 +69,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: faustbrian/go-library-tools
-          ref: 7744b4df6c4750d43af980ee332607dc2c1827ad
+          ref: 77bfd78c12a853f0d490bb27a3fbcb5f34330772
           path: security-tooling
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -83,51 +83,12 @@ jobs:
         id: native-checks
         working-directory: producer
         run: '"${GOTMPDIR}/golib" check --local --module .'
-      - name: Classify standalone gosec refusal without report contents
-        if: failure() && steps.native-checks.outcome == 'failure'
+      - name: Qualify prepared analyzer fixtures
         working-directory: producer
         run: |
           set -euo pipefail
-          scanner_status=0
-          go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 \
-            -nosec-require-rules -nosec-require-justification \
-            -fmt=json -out="${GOTMPDIR}/gosec.json" ./... \
-            >"${GOTMPDIR}/gosec.log" 2>&1 || scanner_status=$?
-          if [[ -f "${GOTMPDIR}/gosec.json" ]]; then
-            jq --arg root "${PWD}/" --argjson status "${scanner_status}" '
-              {status: $status,
-               issue_count: ((.Issues // []) | length),
-               load_error_files: ((.["Golang errors"] // {}) | keys | length),
-               error_owners: [
-                 (.["Golang errors"] // {}) | to_entries[] |
-                 {owner: (if .key == ($root + "testdata/analyzer/consumer/consumer.go") or
-                              .key == "testdata/analyzer/consumer/consumer.go"
-                          then "fixture-consumer"
-                          elif .key == ($root + "testdata/analyzer/adapter/adapter.go") or
-                               .key == "testdata/analyzer/adapter/adapter.go"
-                          then "fixture-adapter" else "other" end),
-                  missing_module_errors: ([.value[] |
-                    select(.error | type == "string") |
-                    select(.error | contains("no required module provides package"))] | length),
-                  other_errors: ([.value[] |
-                    select(if (.error | type) == "string"
-                           then (.error | contains("no required module provides package") | not)
-                           else true end)] | length)}
-               ] | group_by(.owner) | map(
-                 {owner: .[0].owner, files: length,
-                  missing_module_errors: (map(.missing_module_errors) | add),
-                  other_errors: (map(.other_errors) | add)}),
-               omitted: ([((.Issues // []) | length) - 32, 0] | max),
-               issues: [(.Issues // [])[:32][] |
-                 {rule: (.rule_id | select(test("^G[0-9]{3}$"))),
-                  file: (.file | select(startswith($root)) | ltrimstr($root) |
-                    select(length <= 256 and test("^[A-Za-z0-9_./-]+[.]go$"))),
-                  line: (.line | select(test("^[0-9]+(-[0-9]+)?$")))}]}
-            ' "${GOTMPDIR}/gosec.json"
-          else
-            echo 'Standalone scanner did not produce a structured report'
-          fi
-          exit "${scanner_status}"
+          node scripts/check-analyzers.test.cjs
+          bash scripts/check-analyzers.sh --security
       - name: Remove task-owned qualification resources
         if: always()
         env:
