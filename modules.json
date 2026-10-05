@@ -150,7 +150,7 @@
         ],
         "documentation": {
           "readme": "README.md",
-          "api": "https://pkg.go.dev/github.com/faustbrian/go-tenancy",
+          "api": "https://pkg.go.dev/github.com/faustbrian/go-tenancy/v2",
           "adoption": "docs/integrations.md",
           "security": "docs/security.md",
           "compatibility": "COMPATIBILITY.md",
@@ -158,7 +158,7 @@
           "examples": "example_test.go",
           "faq": "docs/faq.md",
           "changelog": "CHANGELOG.md",
-          "pkg_go_dev": "https://pkg.go.dev/github.com/faustbrian/go-tenancy",
+          "pkg_go_dev": "https://pkg.go.dev/github.com/faustbrian/go-tenancy/v2",
           "ecosystem_index": "https://github.com/faustbrian/go-library-tools/blob/v1.4.0/docs/ecosystem/README.md"
         },
         "known_good_compatibility_sets": [],

@@ -1,6 +1,6 @@
 # Tenancy threat model v2
 
-Status: active for the planned v2 source; not a release verification verdict.
+Status: active for the v2 source; not a release verification verdict.
 
 Owner: go-tenancy maintainers.
 

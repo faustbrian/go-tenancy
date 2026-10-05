@@ -5,7 +5,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-100%25_required-blue)](CONTRIBUTING.md#verification)
 [![Mutation](https://img.shields.io/badge/mutation-100%25_required-blue)](CONTRIBUTING.md#verification)
 [![Documentation](https://img.shields.io/badge/docs-checked_in_CI-blue)](docs/)
-[![Go Reference](https://pkg.go.dev/badge/github.com/faustbrian/go-tenancy.svg)](https://pkg.go.dev/github.com/faustbrian/go-tenancy)
+[![Go Reference](https://pkg.go.dev/badge/github.com/faustbrian/go-tenancy/v2.svg)](https://pkg.go.dev/github.com/faustbrian/go-tenancy/v2)
 [![Release](https://img.shields.io/github/v/release/faustbrian/go-tenancy?sort=semver)](https://github.com/faustbrian/go-tenancy/releases)
 [![Go](https://img.shields.io/badge/go-1.27.0-00ADD8?logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -15,11 +15,11 @@ validated tenant identity and makes tenant-bound, system-wide, and deliberately
 unscoped work distinct in Go APIs. It does not authenticate callers, decide
 membership, or authorize access.
 
-The released module remains v1. A planned v2 uses the
+Version 2 source uses the
 `github.com/faustbrian/go-tenancy/v2` module path and makes JSON-RPC injection
 fail closed when encoded output would exceed the configured metadata limit.
-External consumers must remain on v1 until a v2 tag is published; local-only
-module replacements are not a supported migration path.
+Adopt v2 only through a published v2 tag; until one exists, use a released v1
+version. Local-only module replacements are not a supported migration path.
 
 ## Core model
 
