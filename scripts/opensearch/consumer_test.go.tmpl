@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,18 +63,10 @@ func TestOpenSearchUsesOpaqueTenantNamespacesWithoutCrossTenantHits(t *testing.T
 		aliases[tenant] = key
 		physical[tenant] = key + "-v1"
 	}
-	codec, _ := search.NewCursorCodec([]byte("integration-cursor-key-32-bytes!!"), time.Now, 4096)
 	client, err := opensearch.New(opensearch.Config{
 		Endpoints: []string{endpoint}, AllowInsecureHTTP: parsed.Scheme == "http", RequestTimeout: 10 * time.Second, MaximumResponseBytes: 8 << 20,
-		Search: &opensearch.SearchConfig{Limits: limits, CursorCodec: codec, Clock: time.Now,
-			Resolver: opensearch.IndexResolverFunc(func(_ context.Context, tenant, _ string, _ opensearch.IndexAccess) (opensearch.IndexTarget, error) {
-				name, ok := aliases[tenant]
-				if !ok {
-					return opensearch.IndexTarget{}, tenancy.ErrTenantScopeRequired
-				}
-				return opensearch.IndexTarget{Name: name, Fingerprint: "tenancy-v2"}, nil
-			})},
-		Lifecycle: &opensearch.LifecycleConfig{Authorizer: opensearch.LifecycleAuthorizerFunc(func(context.Context, string, []string) error { return nil })},
+		Search:    fixtureSearch(aliases, physical),
+		Lifecycle: fixtureLifecycle(aliases, physical),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -86,12 +81,13 @@ func TestOpenSearchUsesOpaqueTenantNamespacesWithoutCrossTenantHits(t *testing.T
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := client.CreateIndex(t.Context(), tenant, definition); err != nil {
+		ctx := tenantContext(t, tenant)
+		if err := client.CreateIndex(ctx, tenant, definition); err != nil {
 			t.Fatal(err)
 		}
-		value := physical[tenant]
-		t.Cleanup(func() { _ = client.DeleteIndex(context.Background(), tenant, value) })
-		if err := client.AddAlias(t.Context(), tenant, aliases[tenant], physical[tenant], true); err != nil {
+		// The owning CI job removes this exclusive disposable container. These
+		// aliased live generations are not eligible for migration cleanup.
+		if err := client.AddAlias(ctx, tenant, aliases[tenant], physical[tenant], true); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -105,7 +101,7 @@ func TestOpenSearchUsesOpaqueTenantNamespacesWithoutCrossTenantHits(t *testing.T
 	}
 	for _, tenant := range []string{"tenant-a", "tenant-b"} {
 		ctx := tenantContext(t, tenant)
-		result, err := adapter.search(ctx, search.Request{Tenant: tenant, Index: "orders", Query: search.MatchAllQuery{}, Sort: []search.Sort{{Field: "_id", Direction: search.Ascending}}, Page: search.CursorPage{Size: 10, KeepAlive: time.Minute}})
+		result, err := adapter.search(ctx, search.Request{Tenant: tenant, Index: "orders", Query: search.MatchAllQuery{}, Sort: []search.Sort{{Field: search.DocumentIDSortField, Direction: search.Ascending}}, Page: search.CursorPage{Size: 10, KeepAlive: time.Minute}})
 		if err != nil || len(result.Hits()) != 1 || string(result.Hits()[0].Source) != `{"owner":"`+tenant+`"}` {
 			t.Fatalf("tenant %s hits = %#v, %v", tenant, result.Hits(), err)
 		}
@@ -130,6 +126,310 @@ func TestOpenSearchUsesOpaqueTenantNamespacesWithoutCrossTenantHits(t *testing.T
 	}
 	if _, err := adapter.search(tenantContext(t, "tenant-a"), search.Request{Tenant: "tenant-a", Index: "invoices"}); !errors.Is(err, tenancy.ErrConflictingScope) {
 		t.Fatalf("unauthorized logical index error = %v", err)
+	}
+}
+
+func fixtureSearch(aliases, physical map[string]string) *opensearch.SearchConfig {
+	codec, _ := search.NewCursorCodec([]byte("integration-cursor-key-32-bytes!!"), time.Now, 4096)
+	targets := make(map[string]opensearch.IndexTarget, 2)
+	for _, tenant := range []string{"tenant-a", "tenant-b"} {
+		if aliases[tenant] != "" && physical[tenant] != "" {
+			targets[tenant] = opensearch.IndexTarget{Name: aliases[tenant], PhysicalName: physical[tenant], Fingerprint: "tenancy-v2"}
+		}
+	}
+	ownedScope := func(ctx context.Context, tenant, index string) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		scope, err := tenancy.RequireTenant(ctx)
+		if _, ok := targets[tenant]; err != nil || !ok || scope.Value() != tenant || index != "orders" {
+			return tenancy.ErrConflictingScope
+		}
+		return nil
+	}
+	return &opensearch.SearchConfig{Limits: search.DefaultLimits(), CursorCodec: codec,
+		Resolver: opensearch.IndexResolverFunc(func(ctx context.Context, tenant, index string, access opensearch.IndexAccess) (opensearch.IndexTarget, error) {
+			if err := ownedScope(ctx, tenant, index); err != nil {
+				return opensearch.IndexTarget{}, err
+			}
+			if access != opensearch.IndexRead && access != opensearch.IndexWrite {
+				return opensearch.IndexTarget{}, opensearch.ErrUnsafeIndexTarget
+			}
+			return targets[tenant], nil
+		}),
+		// Fixed test data is the only authoritative state in this fresh exclusive
+		// container: ID 42 at version 1, no deletes, updates or tombstones. This
+		// allowance is not a durable source guard for production or replay work.
+		WriteGuard: opensearch.WriteGuardFunc(func(ctx context.Context, authorization opensearch.WriteAuthorization) error {
+			operations := authorization.Operations()
+			if len(operations) != 1 || authorization.Refresh() != search.RefreshWaitFor {
+				return opensearch.ErrWriteDenied
+			}
+			op := operations[0]
+			if err := ownedScope(ctx, op.Tenant, op.Index); err != nil {
+				return err
+			}
+			if op.Action != search.ActionIndex || op.ID != "42" || op.Version != 1 || string(op.Source) != `{"owner":"`+op.Tenant+`"}` {
+				return opensearch.ErrWriteDenied
+			}
+			return nil
+		}),
+		Authorizer: opensearch.SearchAuthorizerFunc(func(ctx context.Context, request opensearch.SearchAuthorization) error {
+			if err := ownedScope(ctx, request.Tenant, request.Index); err != nil {
+				return err
+			}
+			_, matchAll := request.Query.(search.MatchAllQuery)
+			if !matchAll || len(request.Sort) != 1 || request.Sort[0] != (search.Sort{Field: search.DocumentIDSortField, Direction: search.Ascending}) ||
+				request.Pagination.Kind != opensearch.SearchPaginationCursor || request.Pagination.Size != 10 || request.Pagination.KeepAlive != time.Minute || request.Pagination.Continuation ||
+				!request.FullSource || len(request.Projection.Includes)+len(request.Projection.Excludes)+len(request.Highlights)+len(request.Aggregations)+len(request.Suggestions) != 0 {
+				return opensearch.ErrSearchDenied
+			}
+			return nil
+		}),
+	}
+}
+
+func TestFixtureWriteUsesBoundPublicGeneration(t *testing.T) {
+	client, transport := fixtureSearchClient(t)
+	document, _ := search.NewDocument("tenant-a", "orders", "42", 1, json.RawMessage(`{"owner":"tenant-a"}`), search.DefaultLimits())
+	outcome, err := client.Write(tenantContext(t, "tenant-a"), search.IndexDocument(document), search.RefreshWaitFor)
+	if err != nil || outcome.State != search.OutcomeApplied {
+		t.Fatalf("write outcome=%v err=%v", outcome, err)
+	}
+	if len(transport.paths) != 1 || transport.paths[0] != "PUT /fixture-a/_doc/42" {
+		t.Fatalf("write paths=%v", transport.paths)
+	}
+	for _, change := range []func(*search.Document){
+		func(d *search.Document) { d.Tenant = "tenant-b" },
+		func(d *search.Document) { d.Index = "invoices" },
+		func(d *search.Document) { d.ID = "43" },
+		func(d *search.Document) { d.Version = 2 },
+		func(d *search.Document) { d.Source = json.RawMessage(`{"owner":"tenant-b"}`) },
+	} {
+		invalid := document
+		change(&invalid)
+		if _, err := client.Write(tenantContext(t, "tenant-a"), search.IndexDocument(invalid), search.RefreshWaitFor); !errors.Is(err, opensearch.ErrWriteDenied) {
+			t.Fatalf("unowned write = %v", err)
+		}
+	}
+	if _, err := client.Write(context.Background(), search.IndexDocument(document), search.RefreshWaitFor); !errors.Is(err, opensearch.ErrWriteDenied) {
+		t.Fatalf("unscoped write = %v", err)
+	}
+	cancelled, cancel := context.WithCancel(tenantContext(t, "tenant-a"))
+	cancel()
+	if _, err := client.Write(cancelled, search.IndexDocument(document), search.RefreshWaitFor); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled write = %v", err)
+	}
+	if len(transport.paths) != 1 {
+		t.Fatalf("refused writes dispatched: %v", transport.paths)
+	}
+	transport.foreignPhysical = true
+	if _, err := client.Write(tenantContext(t, "tenant-a"), search.IndexDocument(document), search.RefreshWaitFor); !errors.Is(err, opensearch.ErrMalformedResponse) {
+		t.Fatalf("foreign physical write response = %v", err)
+	}
+}
+
+func TestFixtureCursorSearchUsesBoundPublicGeneration(t *testing.T) {
+	client, transport := fixtureSearchClient(t)
+	result, err := client.Search(tenantContext(t, "tenant-a"), fixtureSearchRequest())
+	if err != nil || len(result.Hits()) != 1 {
+		t.Fatalf("search hits=%v err=%v", result.Hits(), err)
+	}
+	if len(transport.paths) != 3 || transport.paths[2] != "DELETE /_search/point_in_time" {
+		t.Fatalf("PIT lifecycle paths=%v", transport.paths)
+	}
+	for _, request := range []search.Request{
+		func() search.Request { r := fixtureSearchRequest(); r.Tenant = "tenant-b"; return r }(),
+		func() search.Request { r := fixtureSearchRequest(); r.Index = "invoices"; return r }(),
+		func() search.Request {
+			r := fixtureSearchRequest()
+			r.Page = search.CursorPage{Size: 11, KeepAlive: time.Minute}
+			return r
+		}(),
+	} {
+		if _, err := client.Search(tenantContext(t, "tenant-a"), request); !errors.Is(err, opensearch.ErrSearchDenied) {
+			t.Fatalf("unowned search = %v", err)
+		}
+	}
+	if len(transport.paths) != 3 {
+		t.Fatalf("refused searches dispatched: %v", transport.paths)
+	}
+	transport.foreignPhysical = true
+	if _, err := client.Search(tenantContext(t, "tenant-a"), fixtureSearchRequest()); !errors.Is(err, opensearch.ErrMalformedResponse) {
+		t.Fatalf("foreign physical search response = %v", err)
+	}
+	if len(transport.paths) != 6 || transport.paths[5] != "DELETE /_search/point_in_time" {
+		t.Fatalf("refused physical response leaked PIT: %v", transport.paths)
+	}
+}
+
+func fixtureSearchRequest() search.Request {
+	return search.Request{Tenant: "tenant-a", Index: "orders", Query: search.MatchAllQuery{}, Sort: []search.Sort{{Field: search.DocumentIDSortField, Direction: search.Ascending}}, Page: search.CursorPage{Size: 10, KeepAlive: time.Minute}}
+}
+
+func fixtureSearchClient(t *testing.T) (*opensearch.Client, *fixtureTransport) {
+	t.Helper()
+	transport := &fixtureTransport{}
+	client, err := opensearch.New(opensearch.Config{Endpoints: []string{"http://127.0.0.1:9200"}, AllowInsecureHTTP: true, Transport: transport, TransportOwnership: opensearch.TransportBorrowed, RequestTimeout: time.Second, MaximumResponseBytes: 4096, Search: fixtureSearch(map[string]string{"tenant-a": "fixture-a", "tenant-b": "fixture-b"}, map[string]string{"tenant-a": "fixture-a-v1", "tenant-b": "fixture-b-v1"})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	return client, transport
+}
+
+func fixtureLifecycle(aliases, physical map[string]string) *opensearch.LifecycleConfig {
+	// Test-only authority: this process is the sole lifecycle owner of a fresh,
+	// exclusively owned disposable container. This ingress gate is not a
+	// production cross-instance durable fence and must not be reused as one.
+	type ownedResources struct{ alias, index string }
+	owned := make(map[string]ownedResources, len(aliases))
+	for tenant, alias := range aliases {
+		if index := physical[tenant]; alias != "" && index != "" {
+			owned[tenant] = ownedResources{alias, index}
+		}
+	}
+	authorize := func(ctx context.Context, tenant string, resources []string) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		scope, err := tenancy.RequireTenant(ctx)
+		binding, ok := owned[tenant]
+		if err != nil || !ok || scope.Value() != tenant || len(resources) == 0 || len(resources) > 2 {
+			return opensearch.ErrLifecycleDenied
+		}
+		for _, resource := range resources {
+			if resource != binding.alias && resource != binding.index {
+				return opensearch.ErrLifecycleDenied
+			}
+		}
+		return nil
+	}
+	permit := make(chan struct{}, 1)
+	permit <- struct{}{}
+	return &opensearch.LifecycleConfig{
+		Authorizer: opensearch.LifecycleAuthorizerFunc(authorize),
+		MutationGuard: opensearch.LifecycleMutationGuardFunc(func(ctx context.Context, request opensearch.LifecycleMutationRequest, operation func() error) error {
+			if err := authorize(ctx, request.Tenant, request.Resources); err != nil {
+				return err
+			}
+			binding := owned[request.Tenant]
+			create := request.Operation == opensearch.OperationCreateIndex && len(request.Resources) == 1 && request.Resources[0] == binding.index
+			bootstrap := request.Operation == opensearch.OperationSwapAlias && len(request.Resources) == 2 && request.Resources[0] == binding.alias && request.Resources[1] == binding.index
+			if !create && !bootstrap {
+				return opensearch.ErrLifecycleDenied
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-permit:
+			}
+			defer func() { permit <- struct{}{} }()
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			return operation()
+		}),
+		CleanupGuard: opensearch.LifecycleCleanupGuardFunc(func(context.Context, search.LifecycleCleanupRequest, func() error) error {
+			// No retired generation exists; aliases/readers can still protect the
+			// live indices. Never manufacture deletion eligibility for teardown.
+			return opensearch.ErrLifecycleCleanupGuardRequired
+		}),
+	}
+}
+
+type fixtureTransport struct {
+	paths           []string
+	foreignPhysical bool
+}
+
+func (transport *fixtureTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if _, err := tenancy.RequireTenant(request.Context()); err != nil {
+		return nil, err
+	}
+	transport.paths = append(transport.paths, request.Method+" "+request.URL.Path)
+	status, body := http.StatusOK, `{"acknowledged":true,"shards_acknowledged":true}`
+	switch {
+	case strings.Contains(request.URL.Path, "/_doc/"):
+		status, body = http.StatusCreated, `{"_index":"fixture-a-v1","_id":"42","_version":1,"result":"created"}`
+	case request.Method == http.MethodPost && strings.HasSuffix(request.URL.Path, "/point_in_time"):
+		body = `{"pit_id":"fixture-pit"}`
+	case request.Method == http.MethodDelete && request.URL.Path == "/_search/point_in_time":
+		body = `{"pits":[{"pit_id":"fixture-pit","successful":true}]}`
+	case request.URL.Path == "/_search":
+		body = `{"took":1,"timed_out":false,"_shards":{"total":1,"successful":1,"skipped":0,"failed":0},"hits":{"total":{"value":1,"relation":"eq"},"hits":[{"_index":"fixture-a-v1","_id":"42","_version":1,"_source":{"owner":"tenant-a"},"sort":["42"]}]}}`
+	}
+	if transport.foreignPhysical {
+		body = strings.ReplaceAll(body, "fixture-a-v1", "fixture-b-v1")
+	}
+	return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: request}, nil
+}
+
+func TestFixtureLifecycleRequiresOwnedScopeAndMutationFence(t *testing.T) {
+	aliases := map[string]string{"tenant-a": "fixture-a", "tenant-b": "fixture-b"}
+	physical := map[string]string{"tenant-a": "fixture-a-v1", "tenant-b": "fixture-b-v1"}
+	lifecycle := fixtureLifecycle(aliases, physical)
+	transport := &fixtureTransport{}
+	client, err := opensearch.New(opensearch.Config{Endpoints: []string{"http://127.0.0.1:9200"}, AllowInsecureHTTP: true, Transport: transport, TransportOwnership: opensearch.TransportBorrowed, RequestTimeout: time.Second, MaximumResponseBytes: 4096, Lifecycle: lifecycle})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	definition, err := search.NewIndexDefinition(physical["tenant-a"], json.RawMessage(`{"number_of_shards":1}`), json.RawMessage(`{"properties":{}}`), search.DefaultLimits())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := tenantContext(t, "tenant-a")
+	if err := client.CreateIndex(ctx, "tenant-a", definition); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.AddAlias(ctx, "tenant-a", aliases["tenant-a"], physical["tenant-a"], true); err != nil {
+		t.Fatal(err)
+	}
+	if len(transport.paths) != 2 || transport.paths[0] != "PUT /fixture-a-v1" || transport.paths[1] != "POST /_aliases" {
+		t.Fatalf("mutations = %v", transport.paths)
+	}
+	for _, attempt := range []struct {
+		ctx                  context.Context
+		tenant, alias, index string
+	}{
+		{context.Background(), "tenant-a", aliases["tenant-a"], physical["tenant-a"]},
+		{ctx, "tenant-b", aliases["tenant-b"], physical["tenant-b"]},
+		{ctx, "tenant-a", aliases["tenant-a"], physical["tenant-b"]},
+		{ctx, "tenant-a", "foreign-alias", physical["tenant-a"]},
+	} {
+		if err := client.AddAlias(attempt.ctx, attempt.tenant, attempt.alias, attempt.index, true); !errors.Is(err, opensearch.ErrLifecycleDenied) {
+			t.Fatalf("unauthorized alias error = %v", err)
+		}
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if err := client.CreateIndex(cancelled, "tenant-a", definition); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled create = %v", err)
+	}
+	if err := client.DeleteIndex(ctx, "tenant-a", physical["tenant-a"]); !errors.Is(err, opensearch.ErrLifecycleCleanupGuardRequired) {
+		t.Fatalf("unguarded delete = %v", err)
+	}
+	called := false
+	if lifecycle.CleanupGuard == nil {
+		t.Fatal("cleanup authority is missing")
+	}
+	if err := lifecycle.CleanupGuard.WithCleanupEligible(ctx, search.LifecycleCleanupRequest{}, func() error { called = true; return nil }); err == nil || called {
+		t.Fatalf("live generation cleanup: called=%v err=%v", called, err)
+	}
+	if len(transport.paths) != 2 {
+		t.Fatalf("refused operations reached transport: %v", transport.paths)
+	}
+	request := opensearch.LifecycleMutationRequest{Tenant: "tenant-a", Operation: opensearch.OperationCreateIndex, Resources: []string{physical["tenant-a"]}}
+	failure := errors.New("fixture operation failed")
+	if err := lifecycle.MutationGuard.WithLifecycleMutation(ctx, request, func() error { return failure }); !errors.Is(err, failure) {
+		t.Fatalf("operation failure = %v", err)
+	}
+	bounded, cancelBounded := context.WithTimeout(ctx, time.Second)
+	defer cancelBounded()
+	calls := 0
+	if err := lifecycle.MutationGuard.WithLifecycleMutation(bounded, request, func() error { calls++; return nil }); err != nil || calls != 1 {
+		t.Fatalf("permit after failure: calls=%d err=%v", calls, err)
 	}
 }
 

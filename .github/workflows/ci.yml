@@ -167,16 +167,16 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
           fetch-depth: 0
-      - name: Bind shipped consumer scripts to published source
+      - name: Bind published runtime used by candidate compositions
         run: |
           set -euo pipefail
           test "$(git rev-parse 'v2.0.0^{commit}')" = 7f52a96aecc0760efec83826cd1d68490f895dcd
-          git diff --exit-code v2.0.0 -- scripts
+          git diff --exit-code v2.0.0 -- '*.go' go.mod go.sum api specification .golib.yaml
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.27.0'
           cache: false
-      - name: Run shipped public consumer compositions
+      - name: Run candidate public consumer compositions
         env:
           TASK_ROOT: ${{ runner.temp }}/tenancy-public-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
