@@ -14,16 +14,113 @@ on:
         type: boolean
         default: false
 
+      security_diagnostic:
+        description: Run development security qualification, not release CI
+        required: false
+        default: false
+        type: boolean
+
 permissions:
   contents: read
   security-events: write
 
 jobs:
   ci:
+    if: github.event_name != 'workflow_dispatch' || !inputs.security_diagnostic
     uses: faustbrian/go-library-tools/.github/workflows/library-ci.yml@13d685e06cd4f01990eb95a4590ea67953a0c753 # v1.8.4
     with:
       tooling_sha: 13d685e06cd4f01990eb95a4590ea67953a0c753
       release_dry_run: ${{ inputs.release_dry_run || false }}
+
+  security-diagnostic:
+    name: Native security qualification (development only)
+    if: github.event_name == 'workflow_dispatch' && inputs.security_diagnostic
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      GOWORK: off
+      GOTOOLCHAIN: local
+      GOMAXPROCS: '2'
+      GOFLAGS: -p=1
+    steps:
+      - name: Reject release substitution
+        env:
+          RELEASE_DRY_RUN: ${{ inputs.release_dry_run }}
+        run: test "${RELEASE_DRY_RUN}" = false
+      - name: Initialize task-owned caches
+        env:
+          TASK_ROOT: ${{ runner.temp }}/golib-security-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${TASK_ROOT}/build" "${TASK_ROOT}/modules" "${TASK_ROOT}/tmp" "${TASK_ROOT}/lint"
+          printf 'GOCACHE=%s\nGOMODCACHE=%s\nGOTMPDIR=%s\nGOLANGCI_LINT_CACHE=%s\nTMPDIR=%s\n' \
+            "${TASK_ROOT}/build" "${TASK_ROOT}/modules" "${TASK_ROOT}/tmp" \
+            "${TASK_ROOT}/lint" "${TASK_ROOT}/tmp" >>"${GITHUB_ENV}"
+      - name: Check out exact producer with complete history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: producer
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check out reviewed diagnostic tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: faustbrian/go-library-tools
+          ref: 7744b4df6c4750d43af980ee332607dc2c1827ad
+          path: security-tooling
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.0'
+          cache: false
+      - name: Build development qualification tooling
+        working-directory: security-tooling
+        run: go build -p 1 -trimpath -buildvcs=false -o "${GOTMPDIR}/golib" ./cmd/golib
+      - name: Run native security and bounded checks
+        id: native-checks
+        working-directory: producer
+        run: '"${GOTMPDIR}/golib" check --local --module .'
+      - name: Classify standalone gosec refusal without report contents
+        if: failure() && steps.native-checks.outcome == 'failure'
+        working-directory: producer
+        run: |
+          set -euo pipefail
+          scanner_status=0
+          go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 \
+            -nosec-require-rules -nosec-require-justification \
+            -fmt=json -out="${GOTMPDIR}/gosec.json" ./... \
+            >"${GOTMPDIR}/gosec.log" 2>&1 || scanner_status=$?
+          if [[ -f "${GOTMPDIR}/gosec.json" ]]; then
+            jq --arg root "${PWD}/" --argjson status "${scanner_status}" '
+              {status: $status,
+               issue_count: ((.Issues // []) | length),
+               load_error_packages: ((.GolangErrors // {}) | keys | length),
+               omitted: ([((.Issues // []) | length) - 32, 0] | max),
+               issues: [(.Issues // [])[:32][] |
+                 {rule: (.rule_id | select(test("^G[0-9]{3}$"))),
+                  file: (.file | select(startswith($root)) | ltrimstr($root) |
+                    select(length <= 256 and test("^[A-Za-z0-9_./-]+[.]go$"))),
+                  line: (.line | select(test("^[0-9]+(-[0-9]+)?$")))}]}
+            ' "${GOTMPDIR}/gosec.json"
+          else
+            echo 'Standalone scanner did not produce a structured report'
+          fi
+          exit "${scanner_status}"
+      - name: Remove task-owned qualification resources
+        if: always()
+        env:
+          TASK_ROOT: ${{ runner.temp }}/golib-security-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          for target in "${TASK_ROOT}" "${GITHUB_WORKSPACE}/producer" "${GITHUB_WORKSPACE}/security-tooling"; do
+            if [[ -d "${target}" ]]; then
+              find "${target}" -type d -exec chmod u+w {} +
+              find "${target}" -depth -delete
+            fi
+          done
 
   required:
     name: Required
