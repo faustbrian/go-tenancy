@@ -5,6 +5,14 @@ versioning once released.
 
 ## Unreleased
 
+### Fixed
+
+- Correct the executable OpenSearch public consumer fixture to compose the
+  published adapter's bounded lifecycle, write, cursor-search, and physical
+  response-validation contracts with fixture-scoped authority. The patch
+  publishes the corrected fixture without changing the Tenancy runtime API;
+  public qualification continues to use the immutable v2.0.0 runtime.
+
 ### Changed
 
 - Prepare the intentional JSON-RPC injection contract change under the v2
