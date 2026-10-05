@@ -20,13 +20,19 @@ on:
         default: false
         type: boolean
 
+      public_consumers:
+        description: Verify published v2 consumers and disposable provider compositions
+        required: false
+        default: false
+        type: boolean
+
 permissions:
   contents: read
   security-events: write
 
 jobs:
   ci:
-    if: github.event_name != 'workflow_dispatch' || !inputs.security_diagnostic
+    if: github.event_name != 'workflow_dispatch' || (!inputs.security_diagnostic && !inputs.public_consumers)
     uses: faustbrian/go-library-tools/.github/workflows/library-ci.yml@13d685e06cd4f01990eb95a4590ea67953a0c753 # v1.8.4
     with:
       tooling_sha: 13d685e06cd4f01990eb95a4590ea67953a0c753
@@ -48,7 +54,8 @@ jobs:
       - name: Reject release substitution
         env:
           RELEASE_DRY_RUN: ${{ inputs.release_dry_run }}
-        run: test "${RELEASE_DRY_RUN}" = false
+          PUBLIC_CONSUMERS: ${{ inputs.public_consumers }}
+        run: test "${RELEASE_DRY_RUN}" = false && test "${PUBLIC_CONSUMERS}" = false
       - name: Initialize task-owned caches
         env:
           TASK_ROOT: ${{ runner.temp }}/golib-security-${{ github.run_id }}-${{ github.run_attempt }}
@@ -102,14 +109,110 @@ jobs:
             fi
           done
 
+  public-consumers:
+    name: Published v2 consumer compositions
+    if: github.event_name == 'workflow_dispatch' && inputs.public_consumers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    permissions:
+      contents: read
+    env:
+      GOWORK: off
+      GOTOOLCHAIN: local
+      GOMAXPROCS: '2'
+      GOFLAGS: -p=1
+      POSTGRES_URL: postgres://golib:golib@127.0.0.1:5432/golib?sslmode=disable
+      REDIS_ADDR: 127.0.0.1:6379
+      OPENSEARCH_URL: http://127.0.0.1:9200
+      OPENSEARCH_EXPECTED_VERSION: '3.8.0'
+    services:
+      postgres:
+        image: postgres@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15 # 18.4-alpine
+        env:
+          POSTGRES_USER: golib
+          POSTGRES_PASSWORD: golib
+          POSTGRES_DB: golib
+        ports: ['127.0.0.1:5432:5432']
+        options: >-
+          --cpus=1 --memory=512m --pids-limit=256
+          --health-cmd="pg_isready -U golib -d golib"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      redis:
+        image: redis@sha256:2cc044fc5a07c9b701f8f1255a309ae9ad7856e694ac03513bf3648c01e40763 # 8.6.4-alpine
+        ports: ['127.0.0.1:6379:6379']
+        options: >-
+          --cpus=1 --memory=256m --pids-limit=256
+          --health-cmd="redis-cli ping"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      opensearch:
+        image: opensearchproject/opensearch@sha256:bcc1797519726ceb6d651d4a3e60b7c30da91793914a8dfe75fd441d4f641509 # 3.8.0
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: 'true'
+          DISABLE_INSTALL_DEMO_CONFIG: 'true'
+          OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+        ports: ['127.0.0.1:9200:9200']
+        options: >-
+          --cpus=1 --memory=1g --pids-limit=512 --ulimit nofile=1024:1024
+          --health-cmd="curl --fail --silent http://127.0.0.1:9200/"
+          --health-interval=10s --health-timeout=5s --health-retries=18
+    steps:
+      - name: Reject mixed qualification modes
+        env:
+          RELEASE_DRY_RUN: ${{ inputs.release_dry_run }}
+          SECURITY_DIAGNOSTIC: ${{ inputs.security_diagnostic }}
+        run: test "${RELEASE_DRY_RUN}" = false && test "${SECURITY_DIAGNOSTIC}" = false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Bind published runtime used by candidate compositions
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse 'v2.0.0^{commit}')" = 7f52a96aecc0760efec83826cd1d68490f895dcd
+          git diff --exit-code v2.0.0 -- '*.go' go.mod go.sum api specification .golib.yaml
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.0'
+          cache: false
+      - name: Run candidate public consumer compositions
+        env:
+          TASK_ROOT: ${{ runner.temp }}/tenancy-public-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${TASK_ROOT}"
+          export TMPDIR="${TASK_ROOT}"
+          bash scripts/check-clean-consumer.sh
+          bash scripts/check-postgres-composition.sh
+          bash scripts/check-redis-integration.sh
+          bash scripts/check-opensearch-integration.sh
+      - name: Remove task-owned public consumer resources
+        if: always()
+        env:
+          TASK_ROOT: ${{ runner.temp }}/tenancy-public-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          if [[ -d "${TASK_ROOT}" ]]; then
+            find "${TASK_ROOT}" -type d -exec chmod u+w {} +
+            find "${TASK_ROOT}" -depth -delete
+          fi
+
   required:
     name: Required
     if: always()
-    needs: ci
+    needs: [ci, public-consumers]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require shared workflow
         env:
           CI_RESULT: ${{ needs.ci.result }}
-        run: test "${CI_RESULT}" = success
+          PUBLIC_SELECTED: ${{ github.event_name == 'workflow_dispatch' && inputs.public_consumers }}
+          PUBLIC_RESULT: ${{ needs.public-consumers.result }}
+        run: |
+          if [[ "${PUBLIC_SELECTED}" = true ]]; then
+            test "${PUBLIC_RESULT}" = success
+          else
+            test "${CI_RESULT}" = success
+          fi
