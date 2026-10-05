@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+security=false
+if [[ $# -eq 1 && "$1" == --security ]]; then
+    security=true
+elif [[ $# -ne 0 ]]; then
+    printf 'usage: check-analyzers.sh [--security]\n' >&2
+    exit 2
+fi
+
 module_directory="$(cd "$(dirname "$0")/.." && pwd)"
 temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/tenancy-analyzers.XXXXXX")"
 cleanup() {
     find "${temporary_directory}" -depth -delete
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 analyzer="${temporary_directory}/golib-analysis"
 fixture="${temporary_directory}/fixture"
@@ -80,4 +91,32 @@ assert_diagnostic_count 'observability/high-cardinality-label' 1
 if ! grep -q '"diagnostics":\[\]' "${adapter_report}"; then
     printf 'reviewed tenancy adapter emitted analyzer diagnostics\n' >&2
     exit 1
+fi
+
+if [[ "${security}" == true ]]; then
+    # Install before imposing scanner-output limits: compilation uses the
+    # job-owned Go caches, not the scanner's private report budget.
+    GOBIN="${temporary_directory}" GOWORK=off go install \
+        github.com/securego/gosec/v2/cmd/gosec@v2.29.0
+    # Populate export/build caches before the scanner's file-size limit reaches
+    # its package-loader subprocesses; compilation is not report generation.
+    (
+        cd "${fixture}"
+        GOWORK=off go list -deps -export ./...
+    ) >"${temporary_directory}/exports.log" 2>&1
+    scanner_status=0
+    (
+        cd "${fixture}" || exit "$?"
+        ulimit -c 0 || exit "$?"
+        ulimit -f 8192 || exit "$?"
+        GOWORK=off "${temporary_directory}/gosec" \
+            -nosec-require-rules -nosec-require-justification \
+            -fmt=json -out="${temporary_directory}/gosec.json" ./...
+    ) >"${temporary_directory}/gosec.log" 2>&1 || scanner_status=$?
+    if [[ ${scanner_status} -ne 0 ]]; then
+        printf 'prepared tenancy fixture security scan failed (status %d); private report withheld\n' \
+            "${scanner_status}" >&2
+        exit "${scanner_status}"
+    fi
+    printf 'prepared tenancy fixture security scan passed\n'
 fi
