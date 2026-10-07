@@ -5,6 +5,15 @@ versioning once released.
 
 ## Unreleased
 
+## 2.0.2 - 2026-10-07
+
+### Maintenance
+
+- Adopt the patched shared verification workflow while retaining the
+  configured v1.8.4 tooling and unchanged public Tenancy runtime.
+
+## 2.0.1 - 2026-10-05
+
 ### Fixed
 
 - Correct the executable OpenSearch public consumer fixture to compose the
@@ -12,6 +21,8 @@ versioning once released.
   response-validation contracts with fixture-scoped authority. The patch
   publishes the corrected fixture without changing the Tenancy runtime API;
   public qualification continues to use the immutable v2.0.0 runtime.
+
+## 2.0.0 - 2026-10-05
 
 ### Changed
 
