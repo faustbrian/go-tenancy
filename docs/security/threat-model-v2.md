@@ -50,8 +50,8 @@ results and unresolved findings remain in the ecosystem execution ledger.
 ## Release and adoption
 
 The active module uses `/v2` at the repository root; versions are Git tags on
-main, not separate source trees. Existing public-v1 consumers remain on v1
-until a supported v2 release is published. Follow the
+main, not separate source trees. Published v2.0.1 is available; existing v1
+consumers may remain on v1. Follow the
 [migration guide](../migration.md) when adopting v2, including allowance for
 encoded tenant metadata. Release readiness requires actual current-source CI,
 published artifacts, and clean public consumer proof; this document grants no
