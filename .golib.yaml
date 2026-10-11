@@ -1,6 +1,6 @@
 schema_version: 1
-tool_version: v1.8.4
-tool_checksums_sha256: 32d5e7f8434aca41efde16fe4f8a352074ed74e9b5447b5d39e16009ee3d718e
+tool_version: v2.1.1
+tool_checksums_sha256: 4e0a38f76cbff547541f3164a0e59e958cf2f62d7b5cea19d7a4d1c51fe5e977
 manifest:
   modules: modules.json
   packages: packages.json
@@ -18,6 +18,15 @@ api:
       mode: apidiff
       path: api/v2-baseline.txt
 operations:
+  - module: .
+    gate: local-test
+    steps:
+      - type: go-test
+        packages: [.]
+        run: '^TestGroupConcurrentDrainWaitsForAcceptedWorkBeforeCancellingItsContext$'
+        count: 1
+        race: true
+        timeout: 2m
   - module: .
     gate: fuzz
     steps:

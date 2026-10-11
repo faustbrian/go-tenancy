@@ -2,8 +2,8 @@
 
 ## Before Editing
 
-1. Read [`AGENTS.md`](AGENTS.md) and the affected module's goals and docs.
-2. Run `make inventory` and the narrow baseline gate for the module.
+1. Read [`AGENTS.md`](AGENTS.md) and the affected module's docs.
+2. Run the standalone Go baseline below.
 3. Identify owned dependencies and reverse dependants in `modules.json`.
 4. Preserve unrelated work and generated/corpus provenance.
 
@@ -24,7 +24,8 @@ the affected stable decision entries, and complete the Specification Decisions
 section of the pull request template. An unresolved interpretation or stale
 source pin is release-blocking; peer behavior cannot silently select policy.
 
-Required mutation gates must finish with zero surviving viable mutants.
+Full scheduled and release mutation gates must finish with zero surviving viable
+mutants. Local mutation is optional, not a universal contribution prerequisite.
 
 Do not add package-local workflows, permanent replacements, machine-specific
 paths, bypass flags, broad mutation exclusions, or aggregate quality metrics
@@ -32,21 +33,51 @@ that hide a failing package.
 
 ## Verification
 
-Run during development:
+Use the declared Go 1.27.2 producer; the module minimum remains Go 1.27.0.
+Test independently of sibling checkouts:
+
+```bash
+GOWORK=off go test ./...
+```
+
+Ordinary tests run deterministic fuzz seeds and saved corpus regressions, not
+active exploration. This untagged command does not exercise live PostgreSQL.
+The manifest requires PostgreSQL and selects `integration`, including for
+`make check` and `make ci`. Real RLS/pool-isolation proof requires `POSTGRES_URL`
+and a principal able to create temporary roles and tables; a skipped live test
+is not isolation evidence. See [PostgreSQL guidance](docs/postgresql.md).
+
+With the checksum-pinned public verifier selected by `.golib.yaml`, use:
 
 ```bash
 make inventory
 make check
-```
-
-Before submitting a repository-wide change:
-
-```bash
 make ci
 ```
 
-The full scheduled and release gate is `make ci`. Report every unavailable or
-failing command; do not describe partial results as release-ready.
+Both Make routes run bounded local checks, including one race execution of
+concurrent graceful drain: all callers join accepted work, intake is refused,
+and the owned task context survives until completion then is released. Its
+count is one and its timeout is two minutes. Base-free checks run seeds/corpora;
+changed-source CI selects bounded active smoke for causally affected targets.
+Ordinary CI consumes the public verifier without building it from source.
+
+Short active exploration selects one target; optional local mutation selects
+one package:
+
+```bash
+GOMAXPROCS=2 GOWORK=off go test -run '^$' -fuzz '^FuzzPropagationExtraction$' -fuzztime=2s -parallel=1 -timeout=2m .
+golib mutation --module . --package ./http
+```
+
+`make check-full` retains all four native 10000x fuzz campaigns, root benchmarks
+and full coverage, race, mutation, API, security and documentation qualification.
+Routing, propagation, lifecycle and persistence changes still need their affected
+isolation, refusal, cancellation and real-service assertions. Public-consumer
+qualification and proxy failover remain explicit service-backed campaigns; see
+[hardening guidance](docs/hardening.md). Release rehearsal remains
+`golib release dry-run --module .`. Report skipped, unavailable and failed
+boundaries; local checks are not hosted-CI or release proof.
 
 ## Adding A Module
 

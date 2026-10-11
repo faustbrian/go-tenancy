@@ -33,10 +33,10 @@ permissions:
 jobs:
   ci:
     if: github.event_name != 'workflow_dispatch' || (!inputs.security_diagnostic && !inputs.public_consumers)
-    uses: faustbrian/go-library-tools/.github/workflows/library-ci.yml@c7f232472d9c4c5ac5359d70bbef3b8f1571b834 # reviewed security maintenance source
+    uses: faustbrian/go-library-tools/.github/workflows/library-ci.yml@eff8b2127c361ee2f422123824a1d337cc277ac4 # v2.1.1 qualified public verifier
     with:
-      tooling_sha: c7f232472d9c4c5ac5359d70bbef3b8f1571b834
-      source_bootstrap: true
+      tooling_sha: eff8b2127c361ee2f422123824a1d337cc277ac4
+      source_bootstrap: false
       public_dependencies: true
       release_dry_run: ${{ inputs.release_dry_run || false }}
 
@@ -78,12 +78,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: faustbrian/go-library-tools
-          ref: 77bfd78c12a853f0d490bb27a3fbcb5f34330772
+          ref: eff8b2127c361ee2f422123824a1d337cc277ac4
           path: security-tooling
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.27.0'
+          go-version: '1.27.2'
           cache: false
       - name: Build development qualification tooling
         working-directory: security-tooling
@@ -173,10 +173,11 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse 'v2.0.0^{commit}')" = 7f52a96aecc0760efec83826cd1d68490f895dcd
-          git diff --exit-code v2.0.0 -- '*.go' go.mod go.sum api specification .golib.yaml
+          # Runtime parity excludes current verifier policy; keep the published source contract.
+          git diff --exit-code v2.0.0 -- '*.go' go.mod go.sum api specification
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.27.0'
+          go-version: '1.27.2'
           cache: false
       - name: Run candidate public consumer compositions
         env:

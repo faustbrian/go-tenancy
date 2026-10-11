@@ -43,7 +43,8 @@ restrictive-policy composition, cross-tenant reads and mutations, prepared-plan
 reuse across tenants, rollback, cancellation, stale-session cleanup, backend
 termination and replacement, concurrent pool reuse, and idle-scope reset.
 
-`make postgres-failover-integration` starts a digest-pinned PostgreSQL 18
+`bash scripts/test-postgres-failover.sh` is an explicit Docker-backed campaign
+that starts a digest-pinned PostgreSQL 18
 primary and streaming replica on separate hosts. The test routes one
 `database/sql` pool through a switching TCP proxy, stops the primary while a
 tenant transaction is open, promotes the replica, and redirects only new

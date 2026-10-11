@@ -3,7 +3,7 @@
 [![CI](https://github.com/faustbrian/go-tenancy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/faustbrian/go-tenancy/actions/workflows/ci.yml)
 [![CodeQL](https://img.shields.io/badge/CodeQL-required-blue)](https://github.com/faustbrian/go-tenancy/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25_required-blue)](CONTRIBUTING.md#verification)
-[![Mutation](https://img.shields.io/badge/mutation-100%25_required-blue)](CONTRIBUTING.md#verification)
+[![Mutation](https://img.shields.io/badge/mutation-local%20%2F%20scheduled-blue)](CONTRIBUTING.md#verification)
 [![Documentation](https://img.shields.io/badge/docs-checked_in_CI-blue)](docs/)
 [![Go Reference](https://pkg.go.dev/badge/github.com/faustbrian/go-tenancy/v2.svg)](https://pkg.go.dev/github.com/faustbrian/go-tenancy/v2)
 [![Release](https://img.shields.io/github/v/release/faustbrian/go-tenancy?sort=semver)](https://github.com/faustbrian/go-tenancy/releases)
@@ -18,8 +18,8 @@ membership, or authorize access.
 Version 2 source uses the
 `github.com/faustbrian/go-tenancy/v2` module path and makes JSON-RPC injection
 fail closed when encoded output would exceed the configured metadata limit.
-Adopt v2 only through a published v2 tag; until one exists, use a released v1
-version. Local-only module replacements are not a supported migration path.
+Adopt v2 only through a published v2 tag. Local-only module replacements are
+not a supported migration path.
 
 ## Core model
 
@@ -151,11 +151,17 @@ Detailed adoption and security guidance is in [`docs/`](docs/): trust and
 service propagation, integrations, PostgreSQL/RLS, administration, migration,
 the exhaustive boundary inventory, static-analysis boundaries, hardening
 evidence, security caveats, and FAQ.
-The checked-in `analysis.yml` and `make analyzers` fixture provide executable
+The checked-in `analysis.yml` and `bash scripts/check-analyzers.sh` fixture provide executable
 negative proof for declared direct-provider, context-replacement, and telemetry
 cardinality bypasses.
 The current threat-to-test mapping and residual trust boundaries are recorded
 in [`docs/security-review.md`](docs/security-review.md).
 Shared construction, ownership, lifecycle, and composition expectations are in
-the versioned [Golib ecosystem index](https://github.com/faustbrian/go-library-tools/tree/531e4db50fd81a7201257a7b488a0cf22d333aca/docs/ecosystem)
-and its [Foundations family](https://github.com/faustbrian/go-library-tools/blob/v1.4.0/docs/ecosystem/design-language.md#package-families-and-selection).
+the versioned [Golib ecosystem index](https://github.com/faustbrian/go-library-tools/tree/v2.1.1/docs/ecosystem)
+and its [Foundations family](https://github.com/faustbrian/go-library-tools/blob/v2.1.1/docs/ecosystem/design-language.md#package-families-and-selection).
+
+Start development with standalone `GOWORK=off go test ./...`. Bounded
+`make check` and `make ci` consume the public verifier and retain the manifest's
+PostgreSQL service and `integration` tag; `make check-full` preserves full
+qualification. See [contributor guidance](CONTRIBUTING.md#verification) for
+seed-versus-active fuzzing, optional local mutation and real-service boundaries.
