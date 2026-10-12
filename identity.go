@@ -1,6 +1,19 @@
 // Package tenancy provides explicit tenant identity, propagation, and
 // isolation contracts. Tenant identifiers are routing data, never proof of
 // authentication, membership, or authorization.
+//
+// Scope and Metadata own immutable copies; WithScope rejects any different
+// installed scope rather than silently replacing identity. Provider isolation
+// still requires every application path to use its enforcement and namespace
+// seams. SystemCapability records explicit administrative intent, not privilege.
+//
+// Begin with ParseTenantID, NewTenantScope and WithScope.
+// Core value helpers start no goroutines. Group owns bounded asynchronous work
+// and requires Drain or Shutdown. Other callbacks are synchronous; errors and
+// panics are not generally sanitized or contained. Identity formatting is
+// redacted, while explicit accessors and serialization disclose raw values.
+// Applications own transport trust, authorization, durable audits, namespace
+// key custody, database roles and cooperative resource lifetimes.
 package tenancy
 
 import (
@@ -11,7 +24,8 @@ import (
 )
 
 const (
-	// MaxTenantIDBytes is the fixed wire and storage bound for tenant IDs.
+	// MaxTenantIDBytes bounds the canonical decoded identifier, not enclosing
+	// JSON syntax or transport payload bytes.
 	MaxTenantIDBytes = 128
 	redactedTenantID = "tenant_[redacted]"
 )
@@ -38,7 +52,9 @@ func ParseTenantID(value string) (TenantID, error) {
 	return TenantID{value: value}, nil
 }
 
-// MustTenantID is ParseTenantID for static configuration and tests.
+// MustTenantID is ParseTenantID for static configuration and tests. It panics
+// with ErrInvalidTenantID classification on invalid input; use ParseTenantID for
+// caller-controlled values.
 func MustTenantID(value string) TenantID {
 	id, err := ParseTenantID(value)
 	if err != nil {
@@ -50,7 +66,8 @@ func MustTenantID(value string) TenantID {
 // Value returns the canonical raw identifier for explicit trusted boundaries.
 func (id TenantID) Value() string { return id.value }
 
-// Equal compares canonical opaque identifiers exactly.
+// Equal compares stored identifier values exactly, without authorizing them.
+// Two invalid zero values are equal; use Valid where a tenant is required.
 func (id TenantID) Equal(other TenantID) bool { return id == other }
 
 // Valid reports whether id was created from a valid canonical value.
@@ -76,7 +93,10 @@ func (id TenantID) MarshalText() ([]byte, error) {
 	return []byte(id.value), nil
 }
 
-// UnmarshalText validates input and clears the receiver on every failure.
+// UnmarshalText validates input and clears a nonnil receiver on every failure.
+// It retains no byte-slice alias. Conversion to owned text precedes ID validation;
+// callers must bound transported bytes. The receiver must not be used concurrently
+// with decoding.
 func (id *TenantID) UnmarshalText(text []byte) error {
 	if id == nil {
 		return fmt.Errorf("%w: nil receiver", ErrInvalidTenantID)
@@ -98,7 +118,12 @@ func (id TenantID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(id.value)
 }
 
-// UnmarshalJSON validates a JSON string and clears the receiver on failure.
+// UnmarshalJSON validates the decoded JSON string and clears the receiver on
+// failure, including null or non-string input. JSON escapes may encode valid
+// ASCII IDs; this method does not require a canonical JSON byte representation.
+// MaxTenantIDBytes bounds the decoded ID, not encoded JSON input or decoder work;
+// callers must impose a transport byte limit. The receiver must not be read or
+// modified concurrently with decoding.
 func (id *TenantID) UnmarshalJSON(data []byte) error {
 	if id == nil {
 		return fmt.Errorf("%w: nil receiver", ErrInvalidTenantID)

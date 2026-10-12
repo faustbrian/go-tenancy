@@ -18,15 +18,26 @@ var (
 // GroupOptions define bounded concurrency and task error ownership. HandleError
 // may be invoked concurrently by independently completing tasks.
 type GroupOptions struct {
+	// MaxConcurrent bounds active operations plus their error handling, from 1 to 1024.
+	// There is no unbounded internal queue; Submit waits for capacity.
 	MaxConcurrent int
-	HandleError   func(Scope, error)
+	// HandleError optionally consumes each nonnil task error synchronously in its task
+	// goroutine, outside library locks. Nil discards task errors; lifecycle methods do not
+	// return them. It must permit concurrent calls, return promptly and not join its own
+	// Group; errors and panics are not sanitized or contained.
+	HandleError func(Scope, error)
 }
 
 // Group owns every goroutine it starts. Submit is bounded and cancellable;
 // callers must invoke Drain for graceful completion or Shutdown for
 // cancellation. Concurrent lifecycle calls join one terminal state while each
 // call observes its own wait context, and any Shutdown cancels the shared task
-// context. No task scope is retained between submissions.
+// context. The mutex owns intake/active/terminal state and the semaphore owns
+// capacity. Scope and cancellation state belong to individual task contexts,
+// never an ambient global tenant. Cancellation is cooperative: operation and
+// error-handler panics are not recovered, and Shutdown cannot force code to return.
+// Use NewGroup; the zero value is invalid. Submit and lifecycle methods support
+// concurrent calls but do not supply safety for callback-owned state.
 type Group struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
@@ -41,7 +52,10 @@ type Group struct {
 }
 
 // NewGroup derives task lifetime from parent and validates a hard concurrency
-// bound. The group owns the derived cancellation function.
+// bound. Parent must contain no installed scope, including ScopeUnscoped, so one
+// submitted tenant cannot become another task's base identity. Its cancellation
+// and deadline own group lifetime; the group owns the derived cancellation
+// function. Call Drain or Shutdown to finish ownership even after a wait timeout.
 func NewGroup(parent context.Context, options GroupOptions) (*Group, error) {
 	if parent == nil || options.MaxConcurrent <= 0 || options.MaxConcurrent > maximumGroupConcurrency {
 		return nil, ErrInvalidGroup
@@ -58,7 +72,11 @@ func NewGroup(parent context.Context, options GroupOptions) (*Group, error) {
 
 // Submit validates and installs scope synchronously before acquiring bounded
 // capacity. The task preserves submitCtx values, deadline, and cancellation
-// while also remaining owned and cancellable by the group lifetime.
+// while also remaining owned and cancellable by the group lifetime. A nil error
+// acknowledges admission, not completion or task success; errors are delivered
+// only to HandleError. Conflicting scope, invalid inputs and observed cancellation
+// refuse admission. No task is retried, and calls/operations must not wait for
+// their own group's completion.
 func (group *Group) Submit(
 	submitCtx context.Context,
 	scope Scope,
@@ -126,7 +144,9 @@ func (group *Group) Submit(
 // them. Waiting observes ctx. Drain is safe for concurrent and repeated calls;
 // once accepted work completes, it releases the group-owned task context. A
 // concurrent Shutdown cancels shared tasks while Drain continues waiting for
-// the same terminal state.
+// the same terminal state. A wait timeout leaves intake closed and accepted work
+// active; eventual completion still releases the task context. Drain reports wait
+// status only, not task errors, and cannot force an uncooperative task to return.
 func (group *Group) Drain(ctx context.Context) error {
 	if group == nil || group.ctx == nil || ctx == nil {
 		return ErrInvalidGroup
@@ -150,6 +170,9 @@ func (group *Group) Close(ctx context.Context) error {
 // return. Waiting observes ctx, while task cancellation uses the group context.
 // Concurrent and repeated lifecycle calls join the same terminal state; any
 // Shutdown makes an active Drain or Close forceful by cancelling shared tasks.
+// A wait timeout does not mean tasks have returned; call again to join them.
+// Once terminal completion wins, repeated lifecycle waits return nil even with
+// a canceled wait context. Task errors are not returned by lifecycle methods.
 func (group *Group) Shutdown(ctx context.Context) error {
 	if group == nil || group.ctx == nil || ctx == nil {
 		return ErrInvalidGroup

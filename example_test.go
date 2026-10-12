@@ -29,11 +29,16 @@ func Example() {
 }
 
 func ExampleNamespaceEncoder() {
+	// This deterministic example key is not a production secret. Applications
+	// generate and protect their own random namespace key.
 	encoder, err := tenancy.NewNamespaceEncoder([]byte("0123456789abcdef0123456789abcdef"))
 	if err != nil {
 		panic(err)
 	}
-	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("customer-42"), tenancy.Metadata{})
+	scope, err := tenancy.NewTenantScope(tenancy.MustTenantID("customer-42"), tenancy.Metadata{})
+	if err != nil {
+		panic(err)
+	}
 	key, err := encoder.Encode(scope, tenancy.NamespaceCache, "orders/17")
 	if err != nil {
 		panic(err)

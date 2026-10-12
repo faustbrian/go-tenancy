@@ -14,9 +14,9 @@ seams or one of the declared executable consumer fixtures.
 | `Scope` and `ScopeKind` | Exactly one tenant, explicit system work, or deliberate unscoped work; zero and mixed states are invalid. |
 | `AdministrativeReason` | Bounded accountable actor, purpose, and optional reference; redacted by default. |
 | `SystemCapability` | Explicit construction token recording system intent; it grants no authorization. |
-| `Carrier` and `MapCarrier` | Bounded multi-value wire representation used before trust-gated extraction. |
+| `Carrier` and `MapCarrier` | Custom carriers own bounded views before trust-gated extraction; MapCarrier copies Values but is mutable, caller-owned and does not enforce allocation/count bounds. |
 | HTTP header | Configurable field, default `X-Tenant-ID`; values remain untrusted until the immediate-peer callback accepts the request. |
-| JSON-RPC metadata | Bounded raw JSON object; duplicate keys are detected before map decoding, and injected encoded output is subject to the same configured byte ceiling. |
+| JSON-RPC metadata | Bounded raw JSON object; duplicate top-level members are detected before map decoding, not nested non-tenant JSON. Injected encoded output is subject to the same configured byte ceiling. |
 | PostgreSQL predicate argument | Raw tenant value owned by `QueryPredicate.Arguments` for an explicit equality predicate. |
 | PostgreSQL transaction setting | Transaction-local raw tenant value in `app.tenant_id` or the configured setting; read back before work and after the callback. |
 | Opaque namespace | `tn2_` plus lowercase hexadecimal HMAC-SHA-256 over version, scope, tenant, domain, boundary, and logical key. |
@@ -94,8 +94,12 @@ HTTP adds `ErrInvalidOptions` and `ErrInvalidRequest`. JSON-RPC adds
 `ErrOversizedMetadata` in its package. PostgreSQL adds
 `ErrInvalidIdentifier`, `ErrInvalidParameter`, `ErrInvalidRLSOptions`,
 `ErrInvalidConfig`, `ErrInvalidOperation`, `ErrScopeVerification`, and
-`ErrSessionReset`. Callers classify with `errors.Is`; errors do not include raw
-tenant values. `TenantID`, `Metadata`, `AdministrativeReason`,
+`ErrSessionReset`. Owned validation classifications do not include raw tenant
+values. Callback/source/driver errors are returned or joined without general
+sanitization, however, and a manager cleanup error may follow a committed
+transaction. Callers classify with `errors.Is`, protect retained diagnostics,
+and reconcile persistence before deciding to retry. `TenantID`, `Metadata`,
+`AdministrativeReason`,
 `SystemCapability`, and `Scope` redact `String`, `GoString`, and `LogValue`
 output.
 

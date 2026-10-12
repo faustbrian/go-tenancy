@@ -15,9 +15,14 @@ temporarily replace the configured setting. A callback that changes the tenant,
 performs work, and restores the original value before returning can bypass the
 final readback. Prevent direct setting mutation through application-owned SQL
 interfaces and review; the manager cannot make an unrestricted `*sql.Tx`
-incapable of issuing PostgreSQL configuration statements. It rolls back every
-failure path and clears the same connection under a bounded cleanup context. A
-failed reset discards the physical connection.
+incapable of issuing PostgreSQL configuration statements. It attempts rollback
+on pre-commit failure and clears the same connection under a detached bounded
+cleanup context. A failed reset requests physical-connection discard; driver
+cooperation still controls I/O/close completion. Cleanup may return an error
+after commit, so a returned error is not evidence that the transaction was
+rolled back. Commit failures can also have uncertain durable outcomes. Callback
+and driver errors are retained or joined, not generally redacted; reconcile
+persistence before retrying and protect diagnostic output.
 
 Apply `NewRLSPlan` statements in migrations. Run application queries as a
 non-owner role without `BYPASSRLS`; table owners and privileged roles can bypass

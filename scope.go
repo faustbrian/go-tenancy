@@ -32,7 +32,11 @@ type Metadata struct {
 	values map[string]string
 }
 
-// NewMetadata validates and owns a copy of values.
+// NewMetadata validates and copies at most 32 entries. Keys are 1..64 bytes,
+// begin with ASCII alphanumerics and otherwise allow alphanumerics, -, _ and .;
+// values are optional printable ASCII up to 256 bytes. An empty map yields the
+// valid empty metadata value. Credential detection is caller policy, not validation;
+// input maps must stay unchanged while being copied.
 func NewMetadata(values map[string]string) (Metadata, error) {
 	if len(values) > maxMetadataEntries {
 		return Metadata{}, fmt.Errorf("%w: too many entries", ErrInvalidMetadata)
@@ -95,7 +99,9 @@ type AdministrativeReason struct {
 	reference string
 }
 
-// NewAdministrativeReason validates explicit exceptional-operation intent.
+// NewAdministrativeReason validates printable ASCII actor (1..128 bytes),
+// purpose (1..256 bytes) and optional reference (up to 128 bytes). These are
+// caller assertions, not authenticated attribution or a persisted audit record.
 func NewAdministrativeReason(actor, purpose, reference string) (AdministrativeReason, error) {
 	if !validPrintable(actor, maxActorBytes, false) ||
 		!validPrintable(purpose, maxPurposeBytes, false) ||
@@ -136,7 +142,9 @@ type SystemCapability struct {
 	valid  bool
 }
 
-// NewSystemCapability records the audited intent used by NewSystemScope.
+// NewSystemCapability wraps explicit intent for NewSystemScope without doing
+// authorization or audit I/O. An invalid reason produces an invalid capability
+// that NewSystemScope rejects.
 func NewSystemCapability(reason AdministrativeReason) SystemCapability {
 	return SystemCapability{reason: reason, valid: reason.valid()}
 }
@@ -160,7 +168,9 @@ type Scope struct {
 	reason   AdministrativeReason
 }
 
-// NewTenantScope constructs work isolated to exactly id.
+// NewTenantScope declares tenant-bound work for exactly id and copies metadata.
+// It validates identity but does not authorize the tenant or enforce provider
+// isolation on paths that omit the resulting scope.
 func NewTenantScope(id TenantID, metadata Metadata) (Scope, error) {
 	if !id.Valid() {
 		return Scope{}, ErrInvalidTenantID
@@ -168,7 +178,9 @@ func NewTenantScope(id TenantID, metadata Metadata) (Scope, error) {
 	return Scope{kind: ScopeTenant, tenant: id, metadata: cloneMetadata(metadata)}, nil
 }
 
-// NewSystemScope requires an explicit, valid system capability.
+// NewSystemScope requires a valid explicit capability and copies metadata.
+// Its intent is retained without any privilege grant, audit persistence or
+// authentication check.
 func NewSystemScope(capability SystemCapability, metadata Metadata) (Scope, error) {
 	if !capability.valid || !capability.reason.valid() {
 		return Scope{}, ErrCapabilityRequired
@@ -176,7 +188,9 @@ func NewSystemScope(capability SystemCapability, metadata Metadata) (Scope, erro
 	return Scope{kind: ScopeSystem, metadata: cloneMetadata(metadata), reason: capability.reason}, nil
 }
 
-// NewUnscopedScope constructs deliberately non-tenant work with an audit reason.
+// NewUnscopedScope declares deliberately non-tenant work with a valid reason
+// and copied metadata. This is an installed explicit scope, not the absence of
+// scope required by NewGroup and IterateTenants base contexts.
 func NewUnscopedScope(reason AdministrativeReason, metadata Metadata) (Scope, error) {
 	if !reason.valid() {
 		return Scope{}, ErrInvalidAdministrativeReason
@@ -210,7 +224,9 @@ func (scope Scope) Valid() bool {
 	}
 }
 
-// Equal compares all owned scope data.
+// Equal compares kind, tenant, metadata contents and administrative reason.
+// Same-tenant scopes with different metadata are not equal and cannot replace
+// each other through WithScope. It does not require either value to be valid.
 func (scope Scope) Equal(other Scope) bool {
 	return scope.kind == other.kind && scope.tenant.Equal(other.tenant) &&
 		scope.reason == other.reason && scope.metadata.equal(other.metadata)

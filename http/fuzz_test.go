@@ -9,6 +9,8 @@ import (
 	tenancyhttp "github.com/faustbrian/go-tenancy/v2/http"
 )
 
+// FuzzHTTPHeaderExtraction varies raw header values across case-variant map keys.
+// Only one valid value from a trusted peer may become tenant scope.
 func FuzzHTTPHeaderExtraction(f *testing.F) {
 	f.Add("tenant-a", "tenant-b", uint8(1), true)
 	f.Add("tenant-a", "tenant-a", uint8(2), true)

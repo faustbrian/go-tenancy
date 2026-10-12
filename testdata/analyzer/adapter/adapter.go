@@ -10,7 +10,8 @@ import (
 	workflowpostgres "github.com/faustbrian/go-workflow/postgres"
 )
 
-// Construct proves that the exact reviewed adapter exception remains narrow.
+// Construct contains the provider calls allowed only at this exact fixture
+// boundary. It is analyzer input, not successful runtime construction proof.
 func Construct() {
 	_, _ = cachememory.New(cachememory.Config{})
 	_, _ = auditmemory.New(auditmemory.Config{})

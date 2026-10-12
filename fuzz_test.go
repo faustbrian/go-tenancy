@@ -7,6 +7,8 @@ import (
 	"github.com/faustbrian/go-tenancy/v2"
 )
 
+// FuzzTenantIDRoundTrip checks hostile raw identity strings: rejection leaves
+// invalid state, while accepted values survive text decoding and redact diagnostics.
 func FuzzTenantIDRoundTrip(f *testing.F) {
 	for _, seed := range []string{"tenant-a", "A", "0", "a/b:c.d_e-f", "", " tenant", "t\x00x", "é"} {
 		f.Add(seed)
@@ -33,6 +35,8 @@ func FuzzTenantIDRoundTrip(f *testing.F) {
 	})
 }
 
+// FuzzPropagationExtraction varies raw IDs, repeated-value count and trust.
+// Acceptance requires exactly one trusted unchanged tenant; missing stays distinct.
 func FuzzPropagationExtraction(f *testing.F) {
 	for _, seed := range []string{"tenant-a", "", "tenant-a\x00", "tenant/a", "é"} {
 		f.Add(seed, uint8(1), true)

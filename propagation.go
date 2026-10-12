@@ -31,12 +31,19 @@ var (
 // transport-bounded view or copy and no more than nine values; Set must replace
 // the field with exactly one value.
 type Carrier interface {
+	// Values returns field values without retaining a mutable view owned by another
+	// concurrent caller. Custom carriers must cap allocation/count and byte resources
+	// before returning; the codec cannot preempt or undo carrier work.
 	Values(string) []string
+	// Set replaces the field with exactly one raw tenant value. Implementations
+	// own synchronization; Inject is a check followed by Set, not an atomic operation.
 	Set(string, string)
 }
 
-// MapCarrier is an owned in-memory carrier useful for message metadata and
-// adapters. Values returns a copy so callers cannot mutate stored metadata.
+// MapCarrier is a mutable caller-owned in-memory carrier for message metadata and
+// adapters. Values returns a copy, but map assignment/aliases share mutable
+// storage: callers must coordinate writes. It does not enforce transport count
+// or byte bounds itself. A nil map cannot be written through Set.
 type MapCarrier map[string][]string
 
 // Values returns an independently owned copy of a field's values.
@@ -44,18 +51,23 @@ func (carrier MapCarrier) Values(field string) []string {
 	return append([]string(nil), carrier[field]...)
 }
 
-// Set replaces field with exactly one value.
+// Set replaces field with exactly one value without validating either string.
+// A nil map panics; callers own mutation synchronization and transport bounds.
 func (carrier MapCarrier) Set(field, value string) {
 	carrier[field] = []string{value}
 }
 
 // PropagationOptions configure an immutable tenant field name.
 type PropagationOptions struct {
+	// Field is the case-sensitive metadata key; empty selects DefaultTenantField.
+	// It uses the bounded core metadata-key alphabet, not every transport header syntax.
 	Field string
 }
 
 // PropagationCodec extracts and injects tenant-bound scope without deciding
-// whether an inbound carrier is trusted.
+// whether an inbound carrier is trusted. Construct it with NewPropagationCodec;
+// a nil receiver or zero codec is invalid. An initialized codec is immutable and
+// can be reused concurrently with independently synchronized carriers.
 type PropagationCodec struct {
 	field string
 }
@@ -74,6 +86,10 @@ func NewPropagationCodec(options PropagationOptions) (*PropagationCodec, error) 
 
 // Extract parses exactly one tenant value after the immediate boundary has
 // explicitly established trust. Presence alone never establishes trust.
+// Missing, more-than-eight, conflicting and identical duplicate values are
+// classified before trust refusal; one trusted value is then parsed. Neither
+// carrier panics nor caller trust decisions are contained or authenticated here.
+// Extracted scopes contain empty optional metadata.
 func (codec *PropagationCodec) Extract(carrier Carrier, trusted bool) (Scope, error) {
 	if codec == nil || nilLike(carrier) || !validMetadataKey(codec.field) {
 		return Scope{}, ErrInvalidPropagation
@@ -103,7 +119,10 @@ func (codec *PropagationCodec) Extract(carrier Carrier, trusted bool) (Scope, er
 	return NewTenantScope(id, Metadata{})
 }
 
-// Inject writes one tenant value and refuses overwrite or exceptional scope.
+// Inject writes one raw tenant value and refuses any existing field value or
+// exceptional scope. It does not transmit optional Metadata or audit reasons.
+// Values checking and Set are separate calls; callers own carrier mutation
+// serialization, resource limits and panic/error policy.
 func (codec *PropagationCodec) Inject(carrier Carrier, scope Scope) error {
 	if codec == nil || nilLike(carrier) || !validMetadataKey(codec.field) {
 		return ErrInvalidPropagation

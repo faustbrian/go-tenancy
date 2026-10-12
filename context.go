@@ -23,6 +23,9 @@ type contextKey struct{}
 // WithScope returns a context carrying scope. An existing equal scope is
 // retained; any attempt to replace scope fails deterministically. Parent
 // cancellation, values, and deadlines are preserved by the returned context.
+// Installation does not check ctx.Err, authenticate identity or authorize scope;
+// a canceled context may still carry a valid scope. Nil/invalid input returns
+// ErrInvalidContext and a different installed scope returns ErrConflictingScope.
 func WithScope(ctx context.Context, scope Scope) (context.Context, error) {
 	if ctx == nil || !scope.Valid() {
 		return nil, ErrInvalidContext
@@ -45,7 +48,8 @@ func ScopeFromContext(ctx context.Context) (Scope, bool) {
 	return scope, ok && scope.Valid()
 }
 
-// RequireScope fails closed when ctx has no explicit valid scope.
+// RequireScope returns ErrScopeRequired for nil context or missing/invalid
+// scope. It retrieves routing intent without checking cancellation or authorization.
 func RequireScope(ctx context.Context) (Scope, error) {
 	scope, ok := ScopeFromContext(ctx)
 	if !ok {

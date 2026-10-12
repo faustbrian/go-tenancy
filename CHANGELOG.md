@@ -5,6 +5,13 @@ versioning once released.
 
 ## Unreleased
 
+### Documentation
+
+- Clarify tenant intent versus authorization, propagation/carrier ownership,
+  namespace key custody and framing, callback error/panic policy, group and
+  administrative lifetimes, and PostgreSQL commit/cleanup boundaries in source
+  contracts and narrowly affected guidance.
+
 ## 2.0.2 - 2026-10-07
 
 ### Maintenance

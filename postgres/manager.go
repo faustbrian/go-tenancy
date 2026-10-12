@@ -33,18 +33,30 @@ var (
 
 // Connector is the database/sql connection-leasing seam implemented by *sql.DB.
 type Connector interface {
+	// Conn leases a connection owned by Manager until it is reset/closed.
+	// The caller retains pool ownership, concurrency admission and pool shutdown.
 	Conn(context.Context) (*sql.Conn, error)
 }
 
 // Config controls the custom setting, cleanup lifetime, and transaction mode.
 type Config struct {
-	Setting        string
+	// Setting must match the RLS plan; empty selects DefaultSetting.
+	// It is a dot-separated ASCII custom setting name at most 64 bytes.
+	Setting string
+	// CleanupTimeout is 1 ms..30 s, with zero selecting 2 s. It applies to the
+	// detached final reset context, not an unconditional connection-close or rollback
+	// bound.
 	CleanupTimeout time.Duration
-	TxOptions      sql.TxOptions
+	// TxOptions is copied and passed to BeginTx; driver-supported isolation/read-only
+	// semantics remain part of database/sql and the selected driver.
+	TxOptions sql.TxOptions
 }
 
 // Manager owns transaction-local setting and leased-session cleanup policy. It
-// is immutable and safe for concurrent use.
+// is immutable and safe for concurrent use with concurrency-safe collaborators.
+// It does not own the pool, install RLS, accumulate transaction state or retry
+// errors. A returned error may occur after commit during cleanup; it is not
+// proof that the callback's durable effects were rolled back.
 type Manager struct {
 	setting        string
 	cleanupTimeout time.Duration
@@ -74,7 +86,13 @@ func NewManager(config Config) (*Manager, error) {
 // verifies a transaction-local tenant ID, invokes operation, verifies that the
 // callback returned with the same setting, and resets the same leased session
 // before pool reuse. The callback is a trusted persistence boundary and must
-// not mutate the configured setting.
+// not mutate the configured setting, commit/roll back the supplied transaction,
+// retain its context/transaction, or use an alternate connection. Temporary
+// setting changes restored before readback cannot be detected. The operation is
+// synchronous and receives a derived scoped context; callback errors/panics are
+// not sanitized or recovered. Manager attempts rollback on pre-commit failure,
+// commits on success, then resets/closes before return. Commit and cleanup errors
+// may require application reconciliation; no automatic retry is performed.
 func (manager *Manager) WithTenant(
 	ctx context.Context,
 	database Connector,
@@ -92,7 +110,9 @@ func (manager *Manager) WithTenant(
 
 // WithSystem requires explicit system scope and verifies an empty tenant
 // setting. It records intent but does not grant PostgreSQL role privileges or
-// application authorization.
+// application authorization. The same transaction, callback, cleanup and error
+// ownership rules as WithTenant apply; an empty tenant setting still matches
+// no rows under the generated RLS expressions.
 func (manager *Manager) WithSystem(
 	ctx context.Context,
 	database Connector,
@@ -171,6 +191,9 @@ func rollback(tx *sql.Tx) {
 	}
 }
 
+// Retain caller values for cleanup but detach cancellation so a finished or
+// canceled transaction cannot skip session reset. Failed reset requests physical
+// connection discard; drivers still own cooperative I/O and close behavior.
 func (manager *Manager) resetAndClose(ctx context.Context, connection *sql.Conn) error {
 	cleanupContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), manager.cleanupTimeout)
 	defer cancel()

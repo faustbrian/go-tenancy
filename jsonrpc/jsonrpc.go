@@ -1,6 +1,11 @@
 // Package tenancyjsonrpc propagates tenant scope through a bounded JSON-RPC
-// metadata object. It rejects duplicate JSON keys before map decoding can hide
-// ambiguity and requires an explicit immediate-peer trust decision.
+// metadata object. It rejects duplicate top-level JSON members before map
+// decoding can hide ambiguity and requires an explicit immediate-peer trust
+// decision. Nested non-tenant JSON is not recursively duplicate-checked.
+// Use New to bind the field, byte limit and trust callback, then Extract, Accept
+// or Inject. It does not implement JSON-RPC envelopes, authorization or transport;
+// metadata byte slices are borrowed during a call and returned injection bytes
+// are independently owned. Trust callbacks are synchronous and not panic-contained.
 package tenancyjsonrpc
 
 import (
@@ -33,13 +38,20 @@ var (
 
 // Options configure immutable JSON-RPC extraction policy.
 type Options struct {
+	// Field is the exact case-sensitive top-level tenant member; empty uses tenant_id.
 	Field string
 	// MaxMetadataBytes bounds both accepted and injected encoded metadata.
+	// Zero uses 4096; overrides must be 2..65536 bytes.
 	MaxMetadataBytes int
-	Trust            func(context.Context) bool
+	// Trust is required and owns authenticated immediate-peer propagation policy.
+	// It runs after structural decoding, with the borrowed caller context; it does not
+	// imply the peer is authorized for a tenant and is not panic-contained.
+	Trust func(context.Context) bool
 }
 
-// Codec extracts, injects, and installs tenant scope in JSON metadata.
+// Codec extracts, injects, and installs tenant scope in JSON metadata. Use New;
+// the zero value is invalid. Configuration is immutable and may be reused
+// concurrently when the trust callback and borrowed inputs support that use.
 type Codec struct {
 	propagation *tenancy.PropagationCodec
 	field       string
@@ -71,7 +83,11 @@ func New(options Options) (*Codec, error) {
 }
 
 // Extract validates a bounded metadata object and accepts its tenant field
-// only when Trust approves the supplied immediate-boundary context.
+// only when Trust approves the supplied immediate-boundary context. It requires
+// exactly one string tenant value; other top-level duplicate members are invalid,
+// while repeated tenant members receive core duplicate/conflict/count categories.
+// It parses before the trust decision and does not check ctx.Err or evaluate
+// nested non-tenant field semantics. Caller input must stay unchanged during use.
 func (codec *Codec) Extract(ctx context.Context, metadata []byte) (tenancy.Scope, error) {
 	if codec == nil || codec.propagation == nil || codec.trust == nil {
 		return tenancy.Scope{}, ErrInvalidOptions
@@ -98,7 +114,11 @@ func (codec *Codec) Accept(ctx context.Context, metadata []byte) (context.Contex
 
 // Inject returns a bounded new metadata object containing tenant scope.
 // Existing tenant fields, exceptional scopes, and encoded output beyond
-// MaxMetadataBytes are rejected.
+// MaxMetadataBytes are rejected. Input must be one valid JSON object (use {} for
+// empty metadata), and is not mutated. Non-tenant RawMessage values are retained
+// semantically, not byte-for-byte: top-level members are sorted and encoding/json
+// may compact whitespace and escape strings. Nested duplicate members are not
+// a recursive validation surface. No trust callback is invoked for injection.
 func (codec *Codec) Inject(metadata []byte, scope tenancy.Scope) ([]byte, error) {
 	if codec == nil || codec.propagation == nil {
 		return nil, ErrInvalidOptions

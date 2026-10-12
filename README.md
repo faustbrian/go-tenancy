@@ -79,8 +79,9 @@ The `http` adapter requires a trust function for the authenticated immediate
 peer. Direct backend requests and forwarded headers are untrusted unless that
 function proves the boundary. It scans header names case-insensitively so map
 entries with different casing cannot conceal duplicates. The `jsonrpc` adapter
-parses a bounded raw metadata object before map decoding, so duplicate JSON keys
-cannot be silently collapsed.
+parses a bounded raw metadata object before map decoding, so duplicate top-level
+JSON members cannot be silently collapsed. Nested non-tenant values are not
+recursively duplicate-checked.
 
 `Integration` names every first-party boundary and provides `Send`, `Receive`,
 and opaque `Key` operations. Queue retries and redeliveries carry tenant scope
@@ -149,6 +150,7 @@ they cannot prove isolation in application paths that bypass those seams.
 
 Detailed adoption and security guidance is in [`docs/`](docs/): trust and
 service propagation, integrations, PostgreSQL/RLS, administration, migration,
+the [source documentation audit](docs/source-documentation-audit.md),
 the exhaustive boundary inventory, static-analysis boundaries, hardening
 evidence, security caveats, and FAQ.
 The checked-in `analysis.yml` and `bash scripts/check-analyzers.sh` fixture provide executable

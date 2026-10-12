@@ -45,7 +45,11 @@ const (
 
 // Integration gives queue, outbox, Kafka, CloudEvents, audit, correlation,
 // idempotency, cache, rate-limit, search, scheduler, workflow, event-sourcing,
-// and telemetry adapters one small explicit contract.
+// and telemetry adapters one small explicit contract. It does not construct
+// provider clients, send messages, persist values, authenticate peers or own
+// retries. Boundary names select framing/policy seams, not backend enforcement.
+// Use NewIntegration; nil and zero values are invalid. Initialized values are
+// immutable, while carrier safety and provider lifetime remain caller-owned.
 type Integration struct {
 	boundary Boundary
 	codec    *PropagationCodec
@@ -71,7 +75,9 @@ func (integration *Integration) Boundary() Boundary {
 	return integration.boundary
 }
 
-// Send injects the tenant-bound scope required from ctx.
+// Send injects only the tenant ID required from ctx, refusing populated carrier
+// fields. It does not perform network I/O or serialize optional scope metadata;
+// callers own the carrier, envelope and actual send.
 func (integration *Integration) Send(ctx context.Context, carrier Carrier) error {
 	if !integration.valid() {
 		return ErrInvalidIntegration
@@ -79,7 +85,10 @@ func (integration *Integration) Send(ctx context.Context, carrier Carrier) error
 	return integration.codec.InjectFromContext(carrier, ctx)
 }
 
-// Receive accepts tenant metadata only after trusted is explicitly supplied.
+// Receive accepts tenant metadata only after trusted is explicitly supplied,
+// installing a fresh tenant scope with empty metadata without replacing a
+// distinct context scope. The trust flag is an application decision, not
+// authentication, tenant membership or replay validation performed here.
 func (integration *Integration) Receive(
 	ctx context.Context,
 	carrier Carrier,
@@ -93,7 +102,10 @@ func (integration *Integration) Receive(
 
 // Key creates a boundary-separated opaque namespace for scope and logicalKey.
 // Oversized logical keys, including boundary framing, are rejected before
-// namespace input allocation.
+// namespace input allocation. The key limit is 4096 minus eight framing bytes
+// and the boundary-name length. Only tenant scope is accepted. Some boundaries
+// share a domain but retain distinct embedded boundary names. Output is a provider
+// key only; callers must actually use it for all persistence and retry paths.
 func (integration *Integration) Key(
 	encoder *NamespaceEncoder,
 	scope Scope,

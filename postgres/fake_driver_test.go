@@ -21,6 +21,9 @@ var (
 	fakeDatabases      sync.Map
 )
 
+// fakeDatabaseState models tenant-partitioned rows, transaction staging and
+// one-shot driver failures so Manager lifecycle paths can be exercised locally.
+// Its mutex owns shared database state; it is not real PostgreSQL or RLS proof.
 type fakeDatabaseState struct {
 	mutex             sync.Mutex
 	data              map[string]map[string]string

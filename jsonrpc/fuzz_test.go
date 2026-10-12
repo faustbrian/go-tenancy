@@ -8,6 +8,8 @@ import (
 	tenancyjsonrpc "github.com/faustbrian/go-tenancy/v2/jsonrpc"
 )
 
+// FuzzJSONRPCMetadata explores bounded raw metadata and peer-trust decisions.
+// A nil error must produce valid tenant scope and never promote untrusted metadata.
 func FuzzJSONRPCMetadata(f *testing.F) {
 	for _, seed := range [][]byte{
 		[]byte(`{"tenant_id":"tenant-a"}`),

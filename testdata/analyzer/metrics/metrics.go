@@ -3,5 +3,6 @@
 // type signature, owns the high-cardinality rejection.
 package metrics
 
-// Label records one metric label in the analyzer fixture.
+// Label is the inert exact sink used for analyzer matching. It performs no
+// recording or I/O; its permissive signature leaves rejection to the analyzer.
 func Label(any) {}

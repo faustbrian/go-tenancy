@@ -159,6 +159,9 @@ func mustTenantScope(t *testing.T, value string) tenancy.Scope {
 	return scope
 }
 
+// BenchmarkContextScope measures WithScope plus RequireTenant for one fixed
+// tenant; parent/scope construction is outside b.Loop. It reports local allocations,
+// not concurrent request admission or provider isolation throughput.
 func BenchmarkContextScope(b *testing.B) {
 	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
 	parent := context.Background()
@@ -174,6 +177,9 @@ func BenchmarkContextScope(b *testing.B) {
 	}
 }
 
+// BenchmarkNamespaceEncoding hashes a fixed short cache key for one tenant.
+// Encoder/key/scope construction is outside b.Loop; workloads with larger keys
+// must not be compared as though equivalent to this local allocation sample.
 func BenchmarkNamespaceEncoding(b *testing.B) {
 	encoder, _ := tenancy.NewNamespaceEncoder([]byte("0123456789abcdef0123456789abcdef"))
 	scope, _ := tenancy.NewTenantScope(tenancy.MustTenantID("tenant-a"), tenancy.Metadata{})
@@ -185,6 +191,8 @@ func BenchmarkNamespaceEncoding(b *testing.B) {
 	}
 }
 
+// BenchmarkTenantAssertion measures a successful exact-tenant assertion with
+// context and identity construction outside b.Loop, not mismatch or transport work.
 func BenchmarkTenantAssertion(b *testing.B) {
 	id := tenancy.MustTenantID("tenant-a")
 	scope, _ := tenancy.NewTenantScope(id, tenancy.Metadata{})

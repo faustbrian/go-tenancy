@@ -1,5 +1,9 @@
 // Package tenancytest provides concise constructors and assertions for tests
-// that exercise explicit tenancy contracts.
+// that exercise explicit tenancy contracts. Use Tenant or System, Context and
+// AssertTenant at the test boundary. Helpers fail the supplied testing.TB
+// on invalid input rather than returning errors; callers must supply a nonnil
+// test handle and obey its goroutine/lifetime rules. System helpers only create
+// intent and do not authorize operations or prove provider/RLS isolation.
 package tenancytest
 
 import (

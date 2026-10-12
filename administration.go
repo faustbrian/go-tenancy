@@ -17,45 +17,76 @@ var ErrInvalidIteration = errors.New("tenancy: invalid administrative iteration"
 // TenantPage is one bounded page from a resumable tenant source. NextCursor is
 // empty only when the source is complete.
 type TenantPage struct {
-	Tenants    []TenantID
+	// Tenants contains at most the requested PageSize validated IDs. The source owns
+	// its backing storage and must not mutate it while that page is being processed.
+	Tenants []TenantID
+	// NextCursor is the source-owned stable snapshot continuation, at most 256 bytes;
+	// empty is terminal. It is not authenticated or cryptographically bound here.
 	NextCursor string
 }
 
 // TenantPager is the consumer-defined source for bounded administrative work.
 type TenantPager interface {
+	// ListTenants reads the supplied base context, cursor and positive page ceiling.
+	// The source must preserve snapshot ordering across retries/resume, honor cancellation
+	// and bound its own resources; the library cannot prove those properties.
 	ListTenants(context.Context, string, int) (TenantPage, error)
 }
 
 // ResumeToken identifies an exact page position. Offset is the next tenant in
 // the page at Cursor, allowing retry after partial-page failure.
 type ResumeToken struct {
+	// Cursor selects a stable source page, at most 256 bytes; empty starts at the first
+	// page.
 	Cursor string
+	// Offset is the nonnegative index of the next tenant within the selected page.
 	Offset int
 }
 
 // AdministrativeAudit records system intent before each tenant operation.
-// Implementations own durability and redaction. Returning an error fails closed.
+// Implementations own durability and redaction. Returning an error prevents
+// that attempt's operation but cannot undo prior side effects. Audit callbacks
+// run synchronously and must honor cancellation; errors/panics propagate unchanged.
 type AdministrativeAudit func(context.Context, AdministrativeReason, TenantID) error
 
 // IterationOptions bound work and make audit integration mandatory.
 type IterationOptions struct {
-	PageSize   int
+	// PageSize is the requested positive page ceiling, at most 1000.
+	PageSize int
+	// MaxTenants caps successful operations in this invocation, from 1 to 1000000.
+	// At most MaxTenants+1 pages are requested; it is not an aggregate concurrency limit.
 	MaxTenants int
-	Resume     ResumeToken
-	Audit      AdministrativeAudit
+	// Resume identifies where to continue against the same source snapshot; zero starts
+	// anew.
+	Resume ResumeToken
+	// Audit is required and runs before every attempted tenant operation, including
+	// retries.
+	// It owns durable attribution and sanitized diagnostics, not the library.
+	Audit AdministrativeAudit
 }
 
 // IterationResult reports this run's progress and exact continuation point.
 type IterationResult struct {
+	// Processed counts operations that returned nil during this invocation only.
 	Processed int
-	Resume    ResumeToken
-	Complete  bool
+	// Resume is the next operation position, or the failed tenant position on audit/work
+	// error.
+	// Failures may have side effects already; resume requires idempotent operations.
+	Resume ResumeToken
+	// Complete is true only when the observed source ends, not merely when MaxTenants is
+	// reached.
+	Complete bool
 }
 
 // IterateTenants executes bounded sequential work from an unscoped base
 // context. system must be an explicit system scope. Audit callbacks receive a
 // system-scoped child; operations receive a fresh tenant-scoped child derived
-// from the original base, so tenant state cannot survive between iterations.
+// from the original base. Base must have no installed Scope, not ScopeUnscoped.
+// The pager receives the base context, not the system child. Identity does not
+// persist in the library between iterations, but callers must not retain child
+// contexts or resources. Duplicate tenants/cursor cycles are rejected within
+// this invocation. Audit/source/work errors and panics propagate unchanged;
+// successful side effects before failure are not undone or implicitly retried.
 func IterateTenants(
 	ctx context.Context,
 	system Scope,
