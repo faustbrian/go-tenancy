@@ -1,5 +1,7 @@
 # PostgreSQL and RLS
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 Use `Predicate` when the application owns explicit SQL predicates. Use
 `Manager.WithTenant` when a transaction-local custom setting and RLS are part
 of the isolation model. Both may be used together as defense in depth.
@@ -59,3 +61,6 @@ replicated tenant-A row, and must leave an unscoped pooled connection with no
 setting and no visible rows. This proves the adapter reset and reconnect path;
 applications remain responsible for their production proxy's health checks,
 promotion policy, fencing, and retry classification.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

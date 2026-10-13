@@ -1,5 +1,7 @@
 # Integration contracts
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 `Integration` gives queue, outbox, Kafka, CloudEvents, audit, correlation,
 idempotency, cache, rate-limit, search, scheduler, workflow, event-sourcing,
 and telemetry adapters the same explicit `Send`, `Receive`, and `Key` seams.
@@ -25,3 +27,6 @@ event stream names, scheduler entries, search indexes, queue deduplication IDs,
 and cache keys all need their own tenant namespace. Audit events should include
 the opaque namespace plus separately protected tenant routing data only where
 the audit store's access model requires it.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

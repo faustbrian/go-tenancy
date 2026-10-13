@@ -1,5 +1,7 @@
 # Static analysis
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 Runtime and type-system enforcement remain authoritative. Static analysis can
 supplement them when an application declares exact sinks:
 
@@ -44,3 +46,6 @@ reflection, generated calls, dynamic SQL, and undeclared wrappers, and false
 positives when a configured sink is intentionally system-wide. Reviewed
 exceptions must remain explicit. Analyzers do not replace runtime assertions,
 RLS, negative tests, or authorization.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

@@ -1,5 +1,7 @@
 # Administrative access
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 Cross-tenant maintenance, migrations, imports, support work, and analytics
 begin with an application-authorized `SystemCapability`. Its reason contains
 an actor, purpose, and optional ticket/reference. Construction records intent;
@@ -35,3 +37,6 @@ from a reconstructed journal without repeating completed tenants, and executes
 a separately identified migration. Production consumers need a shared durable
 store with equivalent atomicity when work can move between hosts or pods; the
 fixture's local file is single-host evidence only.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

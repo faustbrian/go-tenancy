@@ -1,5 +1,7 @@
 # Tenancy threat model v2
 
+[Documentation index](../README.md) · [Repository entry](../../README.md)
+
 Status: active for the v2 source; not a release verification verdict.
 
 Owner: go-tenancy maintainers.
@@ -56,3 +58,6 @@ consumers may remain on v1. Follow the
 encoded tenant metadata. Release readiness requires actual current-source CI,
 published artifacts, and clean public consumer proof; this document grants no
 gate exception and does not claim those boundaries are complete.
+
+Choose the next guide in the [documentation index](../README.md)
+or return to the [repository entry](../../README.md) for installation and ownership.

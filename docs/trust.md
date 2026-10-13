@@ -1,5 +1,7 @@
 # Trust and propagation
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 Tenant metadata is accepted only after the application authenticates the
 immediate peer and explicitly returns a trust decision. Header presence,
 network location, a proxy-looking address, or a previously authenticated end
@@ -22,3 +24,6 @@ Queue and event consumers authenticate their broker/topic/subscription policy
 before marking metadata trusted. Retries, dead-letter handling, and replay must
 carry the original tenant field and re-run extraction; they must not infer a
 tenant from payload fields or queue names.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

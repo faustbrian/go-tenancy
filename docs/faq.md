@@ -1,5 +1,7 @@
 # FAQ
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 ## Does a tenant ID authorize access?
 
 No. Authentication and authorization decide whether a caller may use a scope.
@@ -31,3 +33,6 @@ context for each operation.
 
 No. They prevent ambiguity and disclosure in keys; provider access controls
 still enforce who can read or write those keys.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

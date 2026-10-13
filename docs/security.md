@@ -1,5 +1,7 @@
 # Security model
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 Tenant IDs are opaque routing data, not secrets and not authorization claims.
 Their raw representation is nevertheless redacted from ordinary formatting and
 structured `log/slog` values to reduce enumeration and high-cardinality
@@ -17,3 +19,6 @@ tenant enumeration, privileged RLS bypass, and retained scoped contexts. The
 runtime rejects ambiguity and malformed scope, while application authentication,
 authorization, broker policy, database roles, and audit retention remain outside
 this package.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

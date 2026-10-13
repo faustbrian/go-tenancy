@@ -1,5 +1,7 @@
 # Security review and isolation matrix
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 Review date: 2026-09-13
 
 ## Security conclusions
@@ -78,3 +80,6 @@ constructors, context sources, typed tenant values, and telemetry sink. It does
 not infer undeclared wrappers, reflection, generated calls, dynamic SQL, or a
 provider added without updating the policy. Runtime negative tests remain
 authoritative for the owned seams.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

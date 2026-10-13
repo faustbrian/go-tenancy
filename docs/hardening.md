@@ -1,5 +1,7 @@
 # Hardening evidence
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 The executable suite covers identity normalization and hostile bytes; scope
 construction and conflicts; cancellation and deadlines; HTTP and JSON-RPC
 duplicates, spoofing, and input and encoded-output size limits; every
@@ -74,3 +76,6 @@ reopens the journal after partial failure and proves completed tenants are not
 repeated while failed imports resume; a separate migration operation remains
 tenant-attributed. This proves the documented application-owned pattern, not a
 cluster-wide ledger implementation supplied by `tenancy`.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

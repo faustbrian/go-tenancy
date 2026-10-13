@@ -1,5 +1,7 @@
 # Tenancy boundary inventory
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 This is the exhaustive owned-surface inventory used by the security review.
 Application and provider code remains in scope only when it uses one of these
 seams or one of the declared executable consumer fixtures.
@@ -124,3 +126,6 @@ application review:
   not be broadened; and
 - local-file administrative fan-out is single-host only; multi-host execution
   requires an application-owned shared durable ledger.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

@@ -1,5 +1,7 @@
 # Migration guide
 
+[Documentation index](README.md) · [Repository entry](../README.md)
+
 ## From v1 to v2
 
 After a v2 release is published, change the module and every package import
@@ -73,3 +75,6 @@ their migrations. `Create` is now the restrictive isolation half and requires
 `DropGrant` first for fail-closed rollback. Treat the pair as one migration
 unit. Code that executes only one field still compiles but no longer represents
 a complete plan.
+
+Choose the next guide in the [documentation index](README.md)
+or return to the [repository entry](../README.md) for installation and ownership.

@@ -70,7 +70,7 @@
         }
       ],
       "purpose": "`tenancy` is a small explicit foundation for tenant isolation. It transports validated tenant identity and makes tenant-bound, system-wide, and deliberately unscoped work distinct in Go APIs. It does not authenticate callers, decide membership, or authorize access.",
-      "lifecycle": "planned",
+      "lifecycle": "stable",
       "kind": "public library",
       "releasable": true,
       "family": "foundations",
@@ -99,8 +99,8 @@
           "github.com/faustbrian/go-tenancy/v2/postgres": "Use for explicit tenant predicates, PostgreSQL row-level-security plans, and transaction-local tenant enforcement.",
           "github.com/faustbrian/go-tenancy/v2/tenancytest": "Use in tests for deterministic tenant and system scopes and tenant assertions."
         },
-        "lifecycle_status": "planned",
-        "maturity": "preview",
+        "lifecycle_status": "active",
+        "maturity": "stable",
         "construction_styles": [
           "must-helper",
           "new-config",
