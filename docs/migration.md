@@ -4,7 +4,7 @@
 
 ## From v1 to v2
 
-After a v2 release is published, change the module and every package import
+Version 2 is published at `v2.0.2`. Change the module and every package import
 from `github.com/faustbrian/go-tenancy` to
 `github.com/faustbrian/go-tenancy/v2`. Version 2 intentionally changes
 `jsonrpc.Codec.Inject`: injection now returns `ErrOversizedMetadata` when the
@@ -13,10 +13,11 @@ re-encoding. Callers that add tenant metadata near their envelope limit must
 reserve space for the encoded tenant field or increase the configured limit
 within `MaximumMetadataBytes`.
 
-Adopt an exact published v2 tag. Until one exists, external consumers must
-remain on a released v1 version. A local-only `replace` does not establish
-public v2 consumer compatibility; clean-consumer and reverse-dependency proof
-must use the published v2 module.
+Adopt an exact published v2 tag such as `v2.0.2`. Existing v1 consumers can
+retain their released version until they complete the paired import and
+behavior migration. A local-only `replace` does not establish public v2
+consumer compatibility; clean-consumer and reverse-dependency proof must use
+the published v2 module.
 
 ## Background group lifecycle naming
 
