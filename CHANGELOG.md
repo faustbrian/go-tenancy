@@ -12,6 +12,12 @@ versioning once released.
   administrative lifetimes, and PostgreSQL commit/cleanup boundaries in source
   contracts and narrowly affected guidance.
 
+## 2.0.3 - 2026-10-22
+
+### Changed
+
+- Publish the current source and documentation with a fresh immutable tag.
+
 ## 2.0.2 - 2026-10-07
 
 ### Maintenance
